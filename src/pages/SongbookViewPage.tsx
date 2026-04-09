@@ -139,7 +139,7 @@ export function SongbookViewPage() {
                 <h2 className="text-3xl font-bold">{i + 1}. {song.title}</h2>
                 <p className="text-xl text-muted-foreground">{song.author}</p>
               </div>
-              <ChordProViewer text={song.lyrics} />
+              <ChordProViewer text={song.lyrics} className="print:columns-2 print:gap-8" />
             </div>
           ))}
         </div>

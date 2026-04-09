@@ -128,3 +128,12 @@
     @apply font-sans;
     }
 }
+
+@media print {
+  @page {
+    margin: 0; /* Removes default browser headers and footers */
+  }
+  body {
+    padding: 2cm; /* Adds physical margin back to the printed page */
+  }
+}
