@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Songbook app",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["email", "name", "role"]
+    },
+    "Song": {
+      "title": "Song",
+      "description": "A song with lyrics and chords",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "genre": { "type": "string" },
+        "lyrics": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["title", "author", "lyrics", "ownerId", "createdAt", "updatedAt", "isPublic"]
+    },
+    "Songbook": {
+      "title": "Songbook",
+      "description": "A collection of songs",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "songs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "songId": { "type": "string" },
+              "order": { "type": "number" }
+            },
+            "required": ["songId", "order"]
+          }
+        },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["title", "ownerId", "songs", "createdAt", "updatedAt", "isPublic"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/songs/{songId}": {
+      "schema": { "$ref": "#/entities/Song" },
+      "description": "Songs"
+    },
+    "/songbooks/{songbookId}": {
+      "schema": { "$ref": "#/entities/Songbook" },
+      "description": "Songbooks"
+    }
+  }
+}

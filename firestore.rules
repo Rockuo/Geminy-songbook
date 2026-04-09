@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - email: string (required)
+    //   - name: string (required)
+    //   - photoUrl: string (optional)
+    //   - role: string (required, 'user' or 'admin')
+    //
+    // Collection: songs
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - author: string (required)
+    //   - genre: string (optional)
+    //   - lyrics: string (required)
+    //   - ownerId: string (required, immutable)
+    //   - createdAt: number (required, immutable)
+    //   - updatedAt: number (required)
+    //   - isPublic: boolean (required)
+    //
+    // Collection: songbooks
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - ownerId: string (required, immutable)
+    //   - songs: list of objects { songId: string, order: number } (required)
+    //   - createdAt: number (required, immutable)
+    //   - updatedAt: number (required)
+    //   - isPublic: boolean (required)
+    //
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "xbures29@gmail.com" && request.auth.token.email_verified == true));
+    }
+    
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'name', 'photoUrl', 'role']) &&
+             data.email is string && isValidEmail(data.email) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() < 1000)) &&
+             data.role in ['user', 'admin'];
+    }
+    
+    function isValidSong(data) {
+      return hasOnlyAllowedFields(['title', 'author', 'genre', 'lyrics', 'ownerId', 'createdAt', 'updatedAt', 'isPublic']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.author is string && data.author.size() > 0 && data.author.size() < 200 &&
+             (!('genre' in data) || (data.genre is string && data.genre.size() < 100)) &&
+             data.lyrics is string && data.lyrics.size() < 50000 &&
+             data.ownerId is string && data.ownerId == request.auth.uid &&
+             data.createdAt is number &&
+             data.updatedAt is number &&
+             data.isPublic is bool;
+    }
+    
+    function isValidSongbook(data) {
+      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
+             data.ownerId is string && data.ownerId == request.auth.uid &&
+             data.songs is list && data.songs.size() < 1000 &&
+             data.createdAt is number &&
+             data.updatedAt is number &&
+             data.isPublic is bool;
+    }
+    
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    ((isOwner(userId) && request.resource.data.role == 'user') || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    match /songs/{songId} {
+      allow read: if isAuthenticated() && (resource.data.isPublic == true || isDocOwner() || isAdmin());
+      allow create: if isAuthenticated() && isValidSong(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidSong(request.resource.data) && 
+                    areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /songbooks/{songbookId} {
+      allow read: if isAuthenticated() && (resource.data.isPublic == true || isDocOwner() || isAdmin());
+      allow create: if isAuthenticated() && isValidSongbook(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidSongbook(request.resource.data) && 
+                    areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+  }
+}

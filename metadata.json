@@ -1,0 +1,5 @@
+{
+  "name": "Songbook App",
+  "description": "Create, edit, and share songbooks with lyrics and chords in ChordPro format.",
+  "requestFramePermissions": []
+}
