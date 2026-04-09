@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, query, getDocs, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '../components/ui/button';
@@ -25,10 +25,41 @@ export function SongbookEditorPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const q = query(collection(db, 'songs'));
-      const snapshot = await getDocs(q);
-      const allSongs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
-        .filter((s: any) => s.isPublic || s.ownerId === user?.uid);
+      let allSongs: any[] = [];
+      
+      try {
+        // We can't just query all songs without admin privileges.
+        // We need to fetch public songs and owned songs separately.
+        const publicQuery = query(collection(db, 'songs'), where('isPublic', '==', true));
+        const publicSnapshot = await getDocs(publicQuery);
+        const publicSongs = publicSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        let ownedSongs: any[] = [];
+        if (user) {
+          const ownedQuery = query(collection(db, 'songs'), where('ownerId', '==', user.uid));
+          const ownedSnapshot = await getDocs(ownedQuery);
+          ownedSongs = ownedSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+        
+        // Merge and deduplicate
+        const songMap = new Map();
+        [...publicSongs, ...ownedSongs].forEach(s => songMap.set(s.id, s));
+        allSongs = Array.from(songMap.values());
+      } catch (e) {
+        console.error("Error loading available songs", e);
+        // If the user is admin, they might have failed the above if we didn't check, 
+        // but actually the above queries are safe for everyone.
+        // If they are admin, they could fetch all, but public + owned is usually enough for the editor.
+        // Let's try to fetch all as a fallback if they are admin.
+        try {
+          const q = query(collection(db, 'songs'));
+          const snapshot = await getDocs(q);
+          allSongs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (adminError) {
+          console.error("Admin fallback failed", adminError);
+        }
+      }
+
       setAvailableSongs(allSongs);
 
       if (id) {

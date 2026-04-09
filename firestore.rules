@@ -69,13 +69,19 @@ service cloud.firestore {
     }
     
     function isAllowedUser() {
-      return request.auth.token.email in ["xbures29@gmail.com", "janaurbankova235@gmail.com"];
+      return isAuthenticated() && 
+             request.auth.token != null && 
+             'email' in request.auth.token &&
+             request.auth.token.email in ["xbures29@gmail.com", "janaurbankova235@gmail.com"];
     }
     
     function isAdmin() {
-      return isAuthenticated() && isAllowedUser() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "xbures29@gmail.com" && request.auth.token.email_verified == true));
+      return isAllowedUser() &&
+        (
+          request.auth.token.email == "xbures29@gmail.com" ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
     }
     
     // ===============================================================
@@ -119,27 +125,29 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow read: if isAllowedUser() && (isOwner(userId) || isAdmin());
-      allow create: if isAuthenticated() && isAllowedUser() && isValidUser(request.resource.data) && 
+      allow create: if isAllowedUser() && isValidUser(request.resource.data) && 
                     ((isOwner(userId) && request.resource.data.role == 'user') || isAdmin());
-      allow update: if isAuthenticated() && isAllowedUser() && isValidUser(request.resource.data) && 
+      allow update: if isAllowedUser() && isValidUser(request.resource.data) && 
                     ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin());
       allow delete: if isAllowedUser() && isAdmin();
     }
     
     match /songs/{songId} {
-      allow read: if isAuthenticated() && isAllowedUser() && (resource.data.isPublic == true || isDocOwner() || isAdmin());
-      allow create: if isAuthenticated() && isAllowedUser() && isValidSong(request.resource.data);
-      allow update: if isAuthenticated() && isAllowedUser() && isDocOwner() && isValidSong(request.resource.data) && 
+      allow read: if resource.data.isPublic == true || 
+                  (isAllowedUser() && (isDocOwner() || isAdmin()));
+      allow create: if isAllowedUser() && isValidSong(request.resource.data);
+      allow update: if isAllowedUser() && isDocOwner() && isValidSong(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
-      allow delete: if isAuthenticated() && isAllowedUser() && (isDocOwner() || isAdmin());
+      allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
     }
     
     match /songbooks/{songbookId} {
-      allow read: if isAuthenticated() && isAllowedUser() && (resource.data.isPublic == true || isDocOwner() || isAdmin());
-      allow create: if isAuthenticated() && isAllowedUser() && isValidSongbook(request.resource.data);
-      allow update: if isAuthenticated() && isAllowedUser() && isDocOwner() && isValidSongbook(request.resource.data) && 
+      allow read: if resource.data.isPublic == true || 
+                  (isAllowedUser() && (isDocOwner() || isAdmin()));
+      allow create: if isAllowedUser() && isValidSongbook(request.resource.data);
+      allow update: if isAllowedUser() && isDocOwner() && isValidSongbook(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
-      allow delete: if isAuthenticated() && isAllowedUser() && (isDocOwner() || isAdmin());
+      allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
     }
   }
 }

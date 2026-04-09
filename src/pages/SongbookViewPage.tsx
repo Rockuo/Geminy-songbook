@@ -28,21 +28,28 @@ export function SongbookViewPage() {
     const loadData = async () => {
       if (!id) return;
       
-      const sbDoc = await getDoc(doc(db, 'songbooks', id));
-      if (sbDoc.exists()) {
-        const sbData = sbDoc.data();
-        setSongbook({ id: sbDoc.id, ...sbData });
-        
-        const q = query(collection(db, 'songs'));
-        const snapshot = await getDocs(q);
-        const allSongs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        const sbSongs = (sbData.songs || [])
-          .sort((a: any, b: any) => a.order - b.order)
-          .map((s: any) => allSongs.find(as => as.id === s.songId))
-          .filter(Boolean);
+      try {
+        const sbDoc = await getDoc(doc(db, 'songbooks', id));
+        if (sbDoc.exists()) {
+          const sbData = sbDoc.data();
+          setSongbook({ id: sbDoc.id, ...sbData });
           
-        setSongs(sbSongs);
+          const sbSongs = [];
+          for (const s of (sbData.songs || [])) {
+            try {
+              const songDoc = await getDoc(doc(db, 'songs', s.songId));
+              if (songDoc.exists()) {
+                sbSongs.push({ id: songDoc.id, ...songDoc.data(), order: s.order });
+              }
+            } catch (e) {
+              console.warn("Could not load song", s.songId, e);
+            }
+          }
+          
+          setSongs(sbSongs.sort((a, b) => a.order - b.order));
+        }
+      } catch (e) {
+        console.error("Error loading songbook", e);
       }
       setLoading(false);
     };
@@ -139,7 +146,7 @@ export function SongbookViewPage() {
                 <h2 className="text-3xl font-bold">{i + 1}. {song.title}</h2>
                 <p className="text-xl text-muted-foreground">{song.author}</p>
               </div>
-              <ChordProViewer text={song.lyrics} className="print:columns-2 print:gap-8" />
+              <ChordProViewer text={song.lyrics} className="md:columns-2 md:gap-8 print:columns-2 print:gap-8" />
             </div>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Link } from 'react-router-dom';
@@ -12,20 +12,67 @@ export function SongsPage() {
   const [user] = useAuthState(auth);
   const [songs, setSongs] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'songs'), orderBy('title'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSongs(data);
-    }, (error) => {
-      console.error(error);
-    });
-    return unsub;
-  }, []);
+    if (user) {
+      if (user.email === 'xbures29@gmail.com') {
+        setIsAdmin(true);
+      } else {
+        // We could fetch the user doc here, but for now we'll just rely on the fallback
+        setIsAdmin(false);
+      }
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const unsubs: (() => void)[] = [];
+    const songsMap = new Map<string, any>();
+
+    const updateSongs = () => {
+      const sorted = Array.from(songsMap.values()).sort((a, b) => a.title.localeCompare(b.title));
+      setSongs(sorted);
+    };
+
+    if (isAdmin) {
+      const q = query(collection(db, 'songs'));
+      unsubs.push(onSnapshot(q, (snapshot) => {
+        snapshot.docs.forEach(doc => songsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'removed') songsMap.delete(change.doc.id);
+        });
+        updateSongs();
+      }, console.error));
+    } else {
+      // Fetch public songs
+      const qPublic = query(collection(db, 'songs'), where('isPublic', '==', true));
+      unsubs.push(onSnapshot(qPublic, (snapshot) => {
+        snapshot.docs.forEach(doc => songsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'removed') songsMap.delete(change.doc.id);
+        });
+        updateSongs();
+      }, console.error));
+
+      // Fetch user's own songs if logged in
+      if (user) {
+        const qOwned = query(collection(db, 'songs'), where('ownerId', '==', user.uid));
+        unsubs.push(onSnapshot(qOwned, (snapshot) => {
+          snapshot.docs.forEach(doc => songsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+          snapshot.docChanges().forEach(change => {
+            if (change.type === 'removed') songsMap.delete(change.doc.id);
+          });
+          updateSongs();
+        }, console.error));
+      }
+    }
+
+    return () => unsubs.forEach(unsub => unsub());
+  }, [user, isAdmin]);
 
   const filteredSongs = songs.filter(s => 
-    (s.isPublic || s.ownerId === user?.uid) &&
     (s.title.toLowerCase().includes(search.toLowerCase()) || 
      s.author.toLowerCase().includes(search.toLowerCase()) ||
      (s.genre && s.genre.toLowerCase().includes(search.toLowerCase())))
