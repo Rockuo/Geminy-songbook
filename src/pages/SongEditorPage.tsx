@@ -10,41 +10,53 @@ import { Label } from '../components/ui/label';
 import { ChordProViewer } from '../components/ChordProViewer';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 
-const DEFAULT_LYRICS = `{comment: Verse 1}
+const DEFAULT_LYRICS = `{sov}
+{comment: Verse 1}
 [C]Lorem ipsum dolor sit [G]amet,
 [Am]consectetur adipiscing [F]elit.
 [C]Sed do eiusmod tempor [G]incididunt
 [F]ut labore et dolore magna [C]aliqua.
+{eov}
 
+{soc}
 {comment: Chorus 1}
 [F]Oh, lorem [C]ipsum,
 [G]Dolor sit [Am]amet!
 [F]We sing the [C]placeholder
 [G]Until the end of [C]time.
+{eoc}
 
+{sov}
 {comment: Verse 2}
 [C]Ut enim ad minim [G]veniam,
 [Am]quis nostrud exercitation [F]ullamco
 [C]laboris nisi ut aliquip [G]ex ea
 [F]commodo [C]consequat.
+{eov}
 
+{soc}
 {comment: Chorus 1}
 [F]Oh, lorem [C]ipsum,
 [G]Dolor sit [Am]amet!
 [F]We sing the [C]placeholder
 [G]Until the end of [C]time.
+{eoc}
 
+{sov}
 {comment: Verse 3}
 [C]Duis aute irure dolor in [G]reprehenderit
 [Am]in voluptate velit esse [F]cillum dolore
 [C]eu fugiat nulla [G]pariatur.
 [F]Excepteur sint [C]occaecat.
+{eov}
 
+{soc}
 {comment: Chorus 2}
 [F]Oh, lorem [C]ipsum,
 [G]Dolor sit [Am]amet!
 [F]We sing the [C]placeholder
-[G]And now we fade [C]away...`;
+[G]And now we fade [C]away...
+{eoc}`;
 
 export function SongEditorPage() {
   const { id } = useParams();

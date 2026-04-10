@@ -46,6 +46,45 @@ export function SongbookViewPage() {
   const [defaultTocFontSize, setDefaultTocFontSize] = useState(18);
   const [songOverrides, setSongOverrides] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  const [pageStarts, setPageStarts] = useState<Record<string, number>>({});
+  const [tocPage, setTocPage] = useState(2);
+
+  useEffect(() => {
+    if (loading || !songbook) return;
+    
+    // Calculate page numbers after a short delay to allow rendering
+    const timer = setTimeout(() => {
+      let currentPage = 1; // Title page is 1
+      
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) {
+        currentPage += Math.max(1, Math.ceil(titleEl.offsetHeight / 1122.5));
+      }
+
+      setTocPage(currentPage);
+      
+      const tocEl = document.getElementById('page-toc');
+      if (tocEl) {
+        currentPage += Math.max(1, Math.ceil(tocEl.offsetHeight / 1122.5));
+      }
+
+      const newPageStarts: Record<string, number> = {};
+      songs.forEach(song => {
+        newPageStarts[song.id] = currentPage;
+        const songEl = document.getElementById(`page-song-${song.id}`);
+        if (songEl) {
+          currentPage += Math.max(1, Math.ceil(songEl.offsetHeight / 1122.5));
+        } else {
+          currentPage += 1;
+        }
+      });
+      
+      setPageStarts(newPageStarts);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [songs, defaultColumns, defaultFontSize, defaultHeaderFontSize, defaultSubheaderFontSize, defaultTocFontSize, songOverrides, loading, songbook]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -183,8 +222,28 @@ export function SongbookViewPage() {
   const hasSharedGroup = userGroupIds.some(gId => (songbook.groupIds || []).includes(gId));
   const canEdit = isOwner || isAdmin || hasSharedGroup;
 
+  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] md:min-h-[297mm] print:w-[210mm] print:min-h-[297mm] p-8 md:p-12 print:p-12 flex flex-col print:!bg-none";
+  const pageStyle = {
+    backgroundImage: 'linear-gradient(to bottom, transparent calc(297mm - 2px), #e2e8f0 calc(297mm - 2px), #e2e8f0 297mm)',
+    backgroundSize: '100% 297mm'
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-4xl print:p-0 print:max-w-none print:m-0">
+      <style>
+        {`
+          @media print {
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              -webkit-print-color-adjust: exact;
+            }
+          }
+        `}
+      </style>
       <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
         <DialogContent>
           <DialogHeader>
@@ -316,29 +375,33 @@ export function SongbookViewPage() {
         </div>
       </div>
 
-      <div className="space-y-16 print:space-y-0">
+      <div className="space-y-16 print:space-y-0 bg-muted/30 print:bg-transparent py-8 print:py-0">
         {/* Title Page */}
-        <div className="flex flex-col items-center justify-center py-20 print:h-screen print:py-0 border-b print:border-b-0 break-after-page">
+        <div id="page-title" className={`${pageClass} items-center justify-center`} style={pageStyle}>
           <h1 className="text-5xl md:text-6xl font-bold mb-6 text-center">{songbook.title}</h1>
           <p className="text-xl md:text-2xl text-muted-foreground text-center max-w-2xl">{songbook.description}</p>
         </div>
 
         {/* Table of Contents */}
-        <div className="py-8 border-b print:border-b-0 break-after-page">
-          <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2 }}>Table of Contents</h2>
-          <ul className="space-y-3 max-w-2xl mx-auto" style={{ fontSize: `${defaultTocFontSize}px` }}>
-            {songs.map((song, i) => (
-              <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2">
-                <span className="font-medium">{i + 1}. {song.title}</span>
-                <span className="text-muted-foreground">{song.author}</span>
-              </li>
-            ))}
-          </ul>
+        <div id="page-toc" className={pageClass} style={pageStyle}>
+          <div className="flex-grow">
+            <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2 }}>Table of Contents</h2>
+            <ul className="space-y-3 max-w-2xl mx-auto columns-1 md:columns-2 print:columns-2 gap-8" style={{ fontSize: `${defaultTocFontSize}px` }}>
+              {songs.map((song, i) => (
+                <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
+                  <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
+                  <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-8 pt-4 text-center text-muted-foreground border-t print:border-none">
+            - {tocPage} -
+          </div>
         </div>
 
         {/* Songs */}
-        <div className="space-y-24 print:space-y-0">
-          {songs.map((song, i) => {
+        {songs.map((song, i) => {
             const override = songOverrides[song.id] || {};
             const cols = override.columns ?? defaultColumns;
             const size = override.fontSize ?? defaultFontSize;
@@ -353,12 +416,13 @@ export function SongbookViewPage() {
             }
 
             return (
-              <div key={song.id} className="print:break-after-page print:pt-8 relative group">
-                <div className="mb-6 flex justify-between items-start">
-                  <div>
-                    <h2 className="font-bold" style={{ fontSize: `${headerSize}px`, lineHeight: 1.2 }}>{i + 1}. {song.title}</h2>
-                    <p className="text-muted-foreground" style={{ fontSize: `${subheaderSize}px`, lineHeight: 1.2 }}>{song.author}</p>
-                  </div>
+              <div id={`page-song-${song.id}`} key={song.id} className={`${pageClass} group`} style={pageStyle}>
+                <div className="flex-grow">
+                  <div className="mb-6 flex justify-between items-start">
+                    <div>
+                      <h2 className="font-bold" style={{ fontSize: `${headerSize}px`, lineHeight: 1.2 }}>{song.title}</h2>
+                      <p className="text-muted-foreground" style={{ fontSize: `${subheaderSize}px`, lineHeight: 1.2 }}>{song.author}</p>
+                    </div>
                   
                   {/* Per-song settings */}
                   <div className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity">
@@ -476,11 +540,13 @@ export function SongbookViewPage() {
                   transposeSteps={transposeSteps}
                   targetKey={transposeTo || song.baseKey || 'C'}
                 />
+                </div>
+                <div className="mt-8 pt-4 text-center text-muted-foreground border-t print:border-none">
+                  - {pageStarts[song.id] || i + 3} -
+                </div>
               </div>
             );
           })}
-        </div>
-        
         {songs.length === 0 && (
           <div className="text-center py-12 text-muted-foreground print:hidden">
             No songs in this songbook.
