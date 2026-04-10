@@ -48,6 +48,7 @@ export function SongbookViewPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const [pageStarts, setPageStarts] = useState<Record<string, number>>({});
+  const [pageCounts, setPageCounts] = useState<Record<string, number>>({});
   const [tocPage, setTocPage] = useState(2);
 
   useEffect(() => {
@@ -55,32 +56,42 @@ export function SongbookViewPage() {
     
     // Calculate page numbers after a short delay to allow rendering
     const timer = setTimeout(() => {
+      const newPageStarts: Record<string, number> = {};
+      const newPageCounts: Record<string, number> = {};
+      
       let currentPage = 1; // Title page is 1
       
       const titleEl = document.getElementById('page-title');
       if (titleEl) {
-        currentPage += Math.max(1, Math.ceil(titleEl.offsetHeight / 1122.5));
+        const pages = Math.max(1, Math.ceil((titleEl.offsetHeight - 5) / 1122.5));
+        newPageCounts['title'] = pages;
+        currentPage += pages;
       }
 
       setTocPage(currentPage);
       
       const tocEl = document.getElementById('page-toc');
       if (tocEl) {
-        currentPage += Math.max(1, Math.ceil(tocEl.offsetHeight / 1122.5));
+        const pages = Math.max(1, Math.ceil((tocEl.offsetHeight - 5) / 1122.5));
+        newPageCounts['toc'] = pages;
+        currentPage += pages;
       }
 
-      const newPageStarts: Record<string, number> = {};
       songs.forEach(song => {
         newPageStarts[song.id] = currentPage;
         const songEl = document.getElementById(`page-song-${song.id}`);
         if (songEl) {
-          currentPage += Math.max(1, Math.ceil(songEl.offsetHeight / 1122.5));
+          const pages = Math.max(1, Math.ceil((songEl.offsetHeight - 5) / 1122.5));
+          newPageCounts[song.id] = pages;
+          currentPage += pages;
         } else {
+          newPageCounts[song.id] = 1;
           currentPage += 1;
         }
       });
       
       setPageStarts(newPageStarts);
+      setPageCounts(newPageCounts);
     }, 500);
     
     return () => clearTimeout(timer);
@@ -222,7 +233,7 @@ export function SongbookViewPage() {
   const hasSharedGroup = userGroupIds.some(gId => (songbook.groupIds || []).includes(gId));
   const canEdit = isOwner || isAdmin || hasSharedGroup;
 
-  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] md:min-h-[297mm] print:w-[210mm] print:min-h-[297mm] p-8 md:p-12 print:p-12 flex flex-col print:!bg-none";
+  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] md:min-h-[297mm] print:w-[210mm] print:min-h-[297mm] p-4 md:p-12 print:py-12 print:px-8 flex flex-col print:!bg-none";
   const pageStyle = {
     backgroundImage: 'linear-gradient(to bottom, transparent calc(297mm - 2px), #e2e8f0 calc(297mm - 2px), #e2e8f0 297mm)',
     backgroundSize: '100% 297mm'
@@ -395,9 +406,15 @@ export function SongbookViewPage() {
               ))}
             </ul>
           </div>
-          <div className="mt-8 pt-4 text-center text-muted-foreground border-t print:border-none">
-            - {tocPage} -
-          </div>
+          {Array.from({ length: pageCounts['toc'] || 1 }).map((_, p) => (
+            <div 
+              key={p} 
+              className="absolute right-8 md:right-12 print:right-8 text-right text-muted-foreground print:text-black bg-background/90 print:bg-white/90 py-1" 
+              style={{ top: `calc(${297 * (p + 1)}mm - 20mm)` }}
+            >
+              {tocPage + p}
+            </div>
+          ))}
         </div>
 
         {/* Songs */}
@@ -541,9 +558,15 @@ export function SongbookViewPage() {
                   targetKey={transposeTo || song.baseKey || 'C'}
                 />
                 </div>
-                <div className="mt-8 pt-4 text-center text-muted-foreground border-t print:border-none">
-                  - {pageStarts[song.id] || i + 3} -
-                </div>
+                {Array.from({ length: pageCounts[song.id] || 1 }).map((_, p) => (
+                  <div 
+                    key={p} 
+                    className="absolute right-8 md:right-12 print:right-8 text-right text-muted-foreground print:text-black bg-background/90 print:bg-white/90 py-1" 
+                    style={{ top: `calc(${297 * (p + 1)}mm - 20mm)` }}
+                  >
+                    {(pageStarts[song.id] || i + 3) + p}
+                  </div>
+                ))}
               </div>
             );
           })}

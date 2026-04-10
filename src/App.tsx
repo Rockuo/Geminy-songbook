@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { Auth } from './components/Auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from './firebase';
@@ -28,7 +28,7 @@ export default function App() {
   }, [user]);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         <header className="border-b bg-card">
           <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -59,6 +59,6 @@ export default function App() {
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
