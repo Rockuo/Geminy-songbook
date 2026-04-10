@@ -12,6 +12,15 @@ service cloud.firestore {
     //   - name: string (required)
     //   - photoUrl: string (optional)
     //   - role: string (required, 'user' or 'admin')
+    //   - groupIds: list of strings (optional)
+    //
+    // Collection: groups
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - description: string (optional)
+    //   - ownerId: string (required, immutable)
+    //   - createdAt: number (required, immutable)
     //
     // Collection: songs
     // Document ID: auto-generated
@@ -24,6 +33,7 @@ service cloud.firestore {
     //   - createdAt: number (required, immutable)
     //   - updatedAt: number (required)
     //   - isPublic: boolean (required)
+    //   - groupIds: list of strings (optional)
     //
     // Collection: songbooks
     // Document ID: auto-generated
@@ -35,6 +45,7 @@ service cloud.firestore {
     //   - createdAt: number (required, immutable)
     //   - updatedAt: number (required)
     //   - isPublic: boolean (required)
+    //   - groupIds: list of strings (optional)
     //
     // ===============================================================
     // Helper Functions
@@ -84,39 +95,64 @@ service cloud.firestore {
         );
     }
     
+    function hasSharedGroup(resourceData) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let userGroups = (userDoc != null && 'groupIds' in userDoc.data) ? userDoc.data.groupIds : [];
+      let resGroups = ('groupIds' in resourceData) ? resourceData.groupIds : [];
+      return userGroups.size() > 0 && resGroups.size() > 0 && userGroups.hasAny(resGroups);
+    }
+    
     // ===============================================================
     // Domain Validators
     // ===============================================================
     
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['email', 'name', 'photoUrl', 'role']) &&
+      return hasOnlyAllowedFields(['email', 'name', 'photoUrl', 'role', 'groupIds']) &&
              data.email is string && isValidEmail(data.email) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() < 1000)) &&
-             data.role in ['user', 'admin'];
+             data.role in ['user', 'admin'] &&
+             (!('groupIds' in data) || (data.groupIds is list && data.groupIds.size() < 100));
+    }
+    
+    function isValidGroup(data) {
+      return hasOnlyAllowedFields(['name', 'description', 'ownerId', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
+             data.ownerId is string && data.ownerId == request.auth.uid &&
+             data.createdAt is number;
     }
     
     function isValidSong(data) {
-      return hasOnlyAllowedFields(['title', 'author', 'genre', 'lyrics', 'ownerId', 'createdAt', 'updatedAt', 'isPublic']) &&
+      return hasOnlyAllowedFields(['title', 'author', 'genre', 'baseKey', 'lyrics', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'groupIds']) &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              data.author is string && data.author.size() > 0 && data.author.size() < 200 &&
              (!('genre' in data) || (data.genre is string && data.genre.size() < 100)) &&
+             (!('baseKey' in data) || (data.baseKey is string && data.baseKey.size() < 10)) &&
              data.lyrics is string && data.lyrics.size() < 50000 &&
              data.ownerId is string && data.ownerId == request.auth.uid &&
              data.createdAt is number &&
              data.updatedAt is number &&
-             data.isPublic is bool;
+             data.isPublic is bool &&
+             (!('groupIds' in data) || (data.groupIds is list && data.groupIds.size() < 100));
     }
     
     function isValidSongbook(data) {
-      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic']) &&
+      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic', 'groupIds', 'defaultColumns', 'defaultFontSize', 'defaultShowChords', 'defaultHeaderFontSize', 'defaultSubheaderFontSize', 'defaultTocFontSize']) &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
              data.ownerId is string && data.ownerId == request.auth.uid &&
              data.songs is list && data.songs.size() < 1000 &&
              data.createdAt is number &&
              data.updatedAt is number &&
-             data.isPublic is bool;
+             data.isPublic is bool &&
+             (!('groupIds' in data) || (data.groupIds is list && data.groupIds.size() < 100)) &&
+             (!('defaultColumns' in data) || (data.defaultColumns is number)) &&
+             (!('defaultFontSize' in data) || (data.defaultFontSize is number)) &&
+             (!('defaultShowChords' in data) || (data.defaultShowChords is bool)) &&
+             (!('defaultHeaderFontSize' in data) || (data.defaultHeaderFontSize is number)) &&
+             (!('defaultSubheaderFontSize' in data) || (data.defaultSubheaderFontSize is number)) &&
+             (!('defaultTocFontSize' in data) || (data.defaultTocFontSize is number));
     }
     
     // ===============================================================
@@ -124,28 +160,40 @@ service cloud.firestore {
     // ===============================================================
     
     match /users/{userId} {
-      allow read: if isAllowedUser() && (isOwner(userId) || isAdmin());
+      allow read: if isAllowedUser();
       allow create: if isAllowedUser() && isValidUser(request.resource.data) && 
                     ((isOwner(userId) && request.resource.data.role == 'user') || isAdmin());
       allow update: if isAllowedUser() && isValidUser(request.resource.data) && 
-                    ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin());
+                    (
+                      (isOwner(userId) && request.resource.data.role == resource.data.role) || 
+                      isAdmin() ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['groupIds']))
+                    );
       allow delete: if isAllowedUser() && isAdmin();
+    }
+    
+    match /groups/{groupId} {
+      allow read: if isAllowedUser();
+      allow create: if isAllowedUser() && isValidGroup(request.resource.data);
+      allow update: if isAllowedUser() && isDocOwner() && isValidGroup(request.resource.data) && 
+                    areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
+      allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
     }
     
     match /songs/{songId} {
       allow read: if resource.data.isPublic == true || 
-                  (isAllowedUser() && (isDocOwner() || isAdmin()));
+                  (isAllowedUser() && (isDocOwner() || isAdmin() || hasSharedGroup(resource.data)));
       allow create: if isAllowedUser() && isValidSong(request.resource.data);
-      allow update: if isAllowedUser() && isDocOwner() && isValidSong(request.resource.data) && 
+      allow update: if isAllowedUser() && (isDocOwner() || hasSharedGroup(resource.data)) && isValidSong(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
       allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
     }
     
     match /songbooks/{songbookId} {
       allow read: if resource.data.isPublic == true || 
-                  (isAllowedUser() && (isDocOwner() || isAdmin()));
+                  (isAllowedUser() && (isDocOwner() || isAdmin() || hasSharedGroup(resource.data)));
       allow create: if isAllowedUser() && isValidSongbook(request.resource.data);
-      allow update: if isAllowedUser() && isDocOwner() && isValidSongbook(request.resource.data) && 
+      allow update: if isAllowedUser() && (isDocOwner() || hasSharedGroup(resource.data)) && isValidSongbook(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
       allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
     }

@@ -1,5 +1,6 @@
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from './ui/button';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useEffect } from 'react';
@@ -9,10 +10,28 @@ export function Auth() {
   const [user, loading] = useAuthState(auth);
 
   useEffect(() => {
-    if (user && user.email && !allowedUsers.includes(user.email)) {
-      signOut(auth);
-      alert("Sorry, your email is not authorized to use this application.");
-    }
+    const checkUser = async () => {
+      if (user && user.email) {
+        if (!allowedUsers.includes(user.email)) {
+          signOut(auth);
+          alert("Sorry, your email is not authorized to use this application.");
+          return;
+        }
+
+        // Ensure user document exists
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: user.email,
+            name: user.displayName || user.email,
+            role: user.email === 'xbures29@gmail.com' ? 'admin' : 'user',
+            groupIds: []
+          });
+        }
+      }
+    };
+    checkUser();
   }, [user]);
 
   const login = async () => {

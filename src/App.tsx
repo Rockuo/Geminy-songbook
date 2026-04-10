@@ -11,6 +11,7 @@ import { SongEditorPage } from './pages/SongEditorPage';
 import { SongbooksPage } from './pages/SongbooksPage';
 import { SongbookEditorPage } from './pages/SongbookEditorPage';
 import { SongbookViewPage } from './pages/SongbookViewPage';
+import { GroupsPage } from './pages/GroupsPage';
 
 export default function App() {
   const [user] = useAuthState(auth);
@@ -39,6 +40,7 @@ export default function App() {
               <nav className="hidden md:flex items-center gap-4">
                 <Link to="/" className="text-sm font-medium hover:text-primary">Songs</Link>
                 <Link to="/songbooks" className="text-sm font-medium hover:text-primary">Songbooks</Link>
+                <Link to="/groups" className="text-sm font-medium hover:text-primary">Groups</Link>
               </nav>
             </div>
             <Auth />
@@ -53,6 +55,7 @@ export default function App() {
             <Route path="/songbook/new" element={<SongbookEditorPage />} />
             <Route path="/songbook/:id/edit" element={<SongbookEditorPage />} />
             <Route path="/songbook/:id" element={<SongbookViewPage />} />
+            <Route path="/groups" element={<GroupsPage />} />
           </Routes>
         </main>
       </div>

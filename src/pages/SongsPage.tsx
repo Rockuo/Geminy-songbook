@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, orderBy, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Link } from 'react-router-dom';
@@ -13,18 +13,30 @@ export function SongsPage() {
   const [songs, setSongs] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user) {
-      if (user.email === 'xbures29@gmail.com') {
-        setIsAdmin(true);
+    const loadUser = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setIsAdmin(data.role === 'admin');
+            setUserGroupIds(data.groupIds || []);
+          } else {
+            setIsAdmin(user.email === 'xbures29@gmail.com');
+          }
+        } catch (e) {
+          console.error("Error loading user", e);
+          setIsAdmin(user.email === 'xbures29@gmail.com');
+        }
       } else {
-        // We could fetch the user doc here, but for now we'll just rely on the fallback
         setIsAdmin(false);
+        setUserGroupIds([]);
       }
-    } else {
-      setIsAdmin(false);
-    }
+    };
+    loadUser();
   }, [user]);
 
   useEffect(() => {
@@ -66,11 +78,31 @@ export function SongsPage() {
           });
           updateSongs();
         }, console.error));
+        
+        // Fetch group songs
+        if (userGroupIds.length > 0) {
+          // Firestore limits array-contains-any to 10 items
+          const chunks = [];
+          for (let i = 0; i < userGroupIds.length; i += 10) {
+            chunks.push(userGroupIds.slice(i, i + 10));
+          }
+          
+          chunks.forEach(chunk => {
+            const qGroup = query(collection(db, 'songs'), where('groupIds', 'array-contains-any', chunk));
+            unsubs.push(onSnapshot(qGroup, (snapshot) => {
+              snapshot.docs.forEach(doc => songsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+              snapshot.docChanges().forEach(change => {
+                if (change.type === 'removed') songsMap.delete(change.doc.id);
+              });
+              updateSongs();
+            }, console.error));
+          });
+        }
       }
     }
 
     return () => unsubs.forEach(unsub => unsub());
-  }, [user, isAdmin]);
+  }, [user, isAdmin, userGroupIds]);
 
   const filteredSongs = songs.filter(s => 
     (s.title.toLowerCase().includes(search.toLowerCase()) || 

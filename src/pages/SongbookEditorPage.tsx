@@ -17,40 +17,73 @@ export function SongbookEditorPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
-  const [songs, setSongs] = useState<{songId: string, order: number}[]>([]);
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [songs, setSongs] = useState<any[]>([]);
   const [ownerId, setOwnerId] = useState('');
+  const [layoutSettings, setLayoutSettings] = useState<any>({});
   
   const [availableSongs, setAvailableSongs] = useState<any[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<any[]>([]);
+  
+  const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserGroupIds(userDoc.data().groupIds || []);
+            setIsAdmin(userDoc.data().role === 'admin');
+          } else {
+            setIsAdmin(user.email === 'xbures29@gmail.com');
+          }
+        } catch (e) {
+          console.error("Error loading user", e);
+        }
+      }
+
       let allSongs: any[] = [];
       
       try {
-        // We can't just query all songs without admin privileges.
-        // We need to fetch public songs and owned songs separately.
         const publicQuery = query(collection(db, 'songs'), where('isPublic', '==', true));
         const publicSnapshot = await getDocs(publicQuery);
         const publicSongs = publicSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         
         let ownedSongs: any[] = [];
+        let groupSongs: any[] = [];
         if (user) {
           const ownedQuery = query(collection(db, 'songs'), where('ownerId', '==', user.uid));
           const ownedSnapshot = await getDocs(ownedQuery);
           ownedSongs = ownedSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          // Fetch user's groups to get group songs
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userGroupIds = userDoc.data().groupIds || [];
+            if (userGroupIds.length > 0) {
+              const chunks = [];
+              for (let i = 0; i < userGroupIds.length; i += 10) {
+                chunks.push(userGroupIds.slice(i, i + 10));
+              }
+              for (const chunk of chunks) {
+                const groupQuery = query(collection(db, 'songs'), where('groupIds', 'array-contains-any', chunk));
+                const groupSnapshot = await getDocs(groupQuery);
+                groupSongs = [...groupSongs, ...groupSnapshot.docs.map(d => ({ id: d.id, ...d.data() }))];
+              }
+            }
+          }
         }
         
         // Merge and deduplicate
         const songMap = new Map();
-        [...publicSongs, ...ownedSongs].forEach(s => songMap.set(s.id, s));
+        [...publicSongs, ...ownedSongs, ...groupSongs].forEach(s => songMap.set(s.id, s));
         allSongs = Array.from(songMap.values());
       } catch (e) {
         console.error("Error loading available songs", e);
-        // If the user is admin, they might have failed the above if we didn't check, 
-        // but actually the above queries are safe for everyone.
-        // If they are admin, they could fetch all, but public + owned is usually enough for the editor.
-        // Let's try to fetch all as a fallback if they are admin.
         try {
           const q = query(collection(db, 'songs'));
           const snapshot = await getDocs(q);
@@ -62,6 +95,14 @@ export function SongbookEditorPage() {
 
       setAvailableSongs(allSongs);
 
+      try {
+        const qGroups = query(collection(db, 'groups'));
+        const groupsSnap = await getDocs(qGroups);
+        setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Could not load groups", e);
+      }
+
       if (id) {
         const sbDoc = await getDoc(doc(db, 'songbooks', id));
         if (sbDoc.exists()) {
@@ -69,8 +110,17 @@ export function SongbookEditorPage() {
           setTitle(data.title);
           setDescription(data.description || '');
           setIsPublic(data.isPublic);
+          setGroupIds(data.groupIds || []);
           setSongs(data.songs || []);
           setOwnerId(data.ownerId);
+          setLayoutSettings({
+            defaultColumns: data.defaultColumns,
+            defaultFontSize: data.defaultFontSize,
+            defaultShowChords: data.defaultShowChords,
+            defaultHeaderFontSize: data.defaultHeaderFontSize,
+            defaultSubheaderFontSize: data.defaultSubheaderFontSize,
+            defaultTocFontSize: data.defaultTocFontSize
+          });
         }
       }
       setLoading(false);
@@ -91,9 +141,17 @@ export function SongbookEditorPage() {
       title,
       description,
       isPublic,
+      groupIds,
       songs: normalizedSongs,
       updatedAt: Date.now()
     };
+
+    if (layoutSettings.defaultColumns !== undefined) data.defaultColumns = layoutSettings.defaultColumns;
+    if (layoutSettings.defaultFontSize !== undefined) data.defaultFontSize = layoutSettings.defaultFontSize;
+    if (layoutSettings.defaultShowChords !== undefined) data.defaultShowChords = layoutSettings.defaultShowChords;
+    if (layoutSettings.defaultHeaderFontSize !== undefined) data.defaultHeaderFontSize = layoutSettings.defaultHeaderFontSize;
+    if (layoutSettings.defaultSubheaderFontSize !== undefined) data.defaultSubheaderFontSize = layoutSettings.defaultSubheaderFontSize;
+    if (layoutSettings.defaultTocFontSize !== undefined) data.defaultTocFontSize = layoutSettings.defaultTocFontSize;
 
     if (!id) {
       data.ownerId = user.uid;
@@ -160,7 +218,22 @@ export function SongbookEditorPage() {
   if (loading) return <div className="p-8">Loading...</div>;
 
   const isOwner = user && (!id || ownerId === user.uid);
-  if (!isOwner && id) return <div className="p-8">Unauthorized</div>;
+  const hasSharedGroup = userGroupIds.some(gId => groupIds.includes(gId));
+  const canEdit = !id || isOwner || isAdmin || hasSharedGroup;
+
+  const toggleGroup = (groupId: string) => {
+    if (groupIds.includes(groupId)) {
+      setGroupIds(groupIds.filter(id => id !== groupId));
+    } else {
+      setGroupIds([...groupIds, groupId]);
+    }
+  };
+
+  if (!canEdit && id) {
+    // Redirect to view page if they can't edit
+    navigate(`/songbook/${id}`);
+    return null;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -199,6 +272,25 @@ export function SongbookEditorPage() {
               Make Public
             </label>
           </div>
+
+          {availableGroups.length > 0 && (
+            <div className="space-y-2">
+              <Label>Assign to Groups</Label>
+              <div className="flex flex-wrap gap-2">
+                {availableGroups.map(g => (
+                  <label key={g.id} className="flex items-center gap-2 text-sm cursor-pointer bg-background border px-2 py-1 rounded hover:bg-muted/50">
+                    <input 
+                      type="checkbox" 
+                      checked={groupIds.includes(g.id)} 
+                      onChange={() => toggleGroup(g.id)} 
+                      className="rounded" 
+                    />
+                    {g.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-2 space-y-6">
