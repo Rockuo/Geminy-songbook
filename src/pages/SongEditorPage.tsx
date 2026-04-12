@@ -9,6 +9,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { ChordProViewer } from '../components/ChordProViewer';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { KEYS, GERMAN_KEYS } from '../lib/transpose';
 
 const DEFAULT_LYRICS = `{sov}
 {comment: Verse 1}
@@ -67,6 +68,7 @@ export function SongEditorPage() {
   const [author, setAuthor] = useState(id ? '' : 'Unknown Artist');
   const [genre, setGenre] = useState(id ? '' : 'Example');
   const [baseKey, setBaseKey] = useState(id ? '' : '');
+  const [baseNotation, setBaseNotation] = useState<'standard' | 'german'>('standard');
   const [lyrics, setLyrics] = useState(id ? '' : DEFAULT_LYRICS);
   const [isPublic, setIsPublic] = useState(true);
   const [groupIds, setGroupIds] = useState<string[]>([]);
@@ -110,6 +112,7 @@ export function SongEditorPage() {
           setAuthor(data.author);
           setGenre(data.genre || '');
           setBaseKey(data.baseKey || '');
+          setBaseNotation(data.baseNotation || 'standard');
           setLyrics(data.lyrics);
           setIsPublic(data.isPublic);
           setGroupIds(data.groupIds || []);
@@ -133,6 +136,7 @@ export function SongEditorPage() {
       author,
       genre,
       baseKey,
+      baseNotation,
       lyrics,
       isPublic,
       groupIds,
@@ -221,10 +225,21 @@ export function SongEditorPage() {
                 <Input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Artist / Author" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Genre</Label>
                 <Input value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g. Rock, Pop" />
+              </div>
+              <div className="space-y-2">
+                <Label>Notation</Label>
+                <select 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={baseNotation} 
+                  onChange={e => setBaseNotation(e.target.value as 'standard' | 'german')}
+                >
+                  <option value="standard">Standard (B, Bb)</option>
+                  <option value="german">German (H, B)</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label>Base Key</Label>
@@ -234,7 +249,7 @@ export function SongEditorPage() {
                   onChange={e => setBaseKey(e.target.value)}
                 >
                   <option value="">None</option>
-                  {['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'].map(k => (
+                  {(baseNotation === 'german' ? GERMAN_KEYS : KEYS).map(k => (
                     <option key={k} value={k}>{k}</option>
                   ))}
                 </select>
@@ -292,7 +307,7 @@ export function SongEditorPage() {
                 </div>
               </div>
             )}
-            <ChordProViewer text={lyrics} />
+            <ChordProViewer text={lyrics} sourceNotation={baseNotation} targetNotation={baseNotation} />
           </div>
         </div>
       </div>

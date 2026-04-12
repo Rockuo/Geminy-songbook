@@ -124,11 +124,12 @@ service cloud.firestore {
     }
     
     function isValidSong(data) {
-      return hasOnlyAllowedFields(['title', 'author', 'genre', 'baseKey', 'lyrics', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'groupIds']) &&
+      return hasOnlyAllowedFields(['title', 'author', 'genre', 'baseKey', 'baseNotation', 'lyrics', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'groupIds']) &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              data.author is string && data.author.size() > 0 && data.author.size() < 200 &&
              (!('genre' in data) || (data.genre is string && data.genre.size() < 100)) &&
              (!('baseKey' in data) || (data.baseKey is string && data.baseKey.size() < 10)) &&
+             (!('baseNotation' in data) || (data.baseNotation is string && data.baseNotation.size() < 20)) &&
              data.lyrics is string && data.lyrics.size() < 50000 &&
              data.ownerId is string && data.ownerId == request.auth.uid &&
              data.createdAt is number &&
@@ -138,7 +139,7 @@ service cloud.firestore {
     }
     
     function isValidSongbook(data) {
-      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic', 'groupIds', 'defaultColumns', 'defaultFontSize', 'defaultShowChords', 'defaultHeaderFontSize', 'defaultSubheaderFontSize', 'defaultTocFontSize']) &&
+      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic', 'groupIds', 'defaultColumns', 'defaultFontSize', 'defaultLyricsFontSize', 'defaultChordsFontSize', 'defaultShowChords', 'defaultTargetNotation', 'defaultHeaderFontSize', 'defaultSubheaderFontSize', 'defaultTocFontSize', 'pageNumberingStyle']) &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
              data.ownerId is string && data.ownerId == request.auth.uid &&
@@ -149,10 +150,14 @@ service cloud.firestore {
              (!('groupIds' in data) || (data.groupIds is list && data.groupIds.size() < 100)) &&
              (!('defaultColumns' in data) || (data.defaultColumns is number)) &&
              (!('defaultFontSize' in data) || (data.defaultFontSize is number)) &&
+             (!('defaultLyricsFontSize' in data) || (data.defaultLyricsFontSize is number)) &&
+             (!('defaultChordsFontSize' in data) || (data.defaultChordsFontSize is number)) &&
              (!('defaultShowChords' in data) || (data.defaultShowChords is bool)) &&
+             (!('defaultTargetNotation' in data) || (data.defaultTargetNotation is string && data.defaultTargetNotation.size() < 20)) &&
              (!('defaultHeaderFontSize' in data) || (data.defaultHeaderFontSize is number)) &&
              (!('defaultSubheaderFontSize' in data) || (data.defaultSubheaderFontSize is number)) &&
-             (!('defaultTocFontSize' in data) || (data.defaultTocFontSize is number));
+             (!('defaultTocFontSize' in data) || (data.defaultTocFontSize is number)) &&
+             (!('pageNumberingStyle' in data) || (data.pageNumberingStyle is string && data.pageNumberingStyle.size() < 20));
     }
     
     // ===============================================================

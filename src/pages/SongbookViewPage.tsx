@@ -5,7 +5,7 @@ import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '../components/ui/button';
 import { Settings, Type, Columns, Hash, Music, ArrowLeft, Edit, Printer, ExternalLink } from 'lucide-react';
-import { calculateSteps, KEYS } from '../lib/transpose';
+import { calculateSteps, KEYS, GERMAN_KEYS, formatNote, normalizeNote } from '../lib/transpose';
 import {
   Popover,
   PopoverContent,
@@ -86,6 +86,7 @@ export function SongbookViewPage() {
   const [defaultLyricsFontSize, setDefaultLyricsFontSize] = useState(14);
   const [defaultChordsFontSize, setDefaultChordsFontSize] = useState(14);
   const [defaultShowChords, setDefaultShowChords] = useState(true);
+  const [defaultTargetNotation, setDefaultTargetNotation] = useState<'standard' | 'german'>('standard');
   const [defaultHeaderFontSize, setDefaultHeaderFontSize] = useState(30);
   const [defaultSubheaderFontSize, setDefaultSubheaderFontSize] = useState(20);
   const [defaultTocFontSize, setDefaultTocFontSize] = useState(18);
@@ -153,7 +154,7 @@ export function SongbookViewPage() {
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [songs, defaultColumns, defaultLyricsFontSize, defaultChordsFontSize, defaultHeaderFontSize, defaultSubheaderFontSize, defaultTocFontSize, songOverrides, loading, songbook]);
+  }, [songs, defaultColumns, defaultLyricsFontSize, defaultChordsFontSize, defaultHeaderFontSize, defaultSubheaderFontSize, defaultTocFontSize, defaultTargetNotation, songOverrides, loading, songbook]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -183,6 +184,7 @@ export function SongbookViewPage() {
           setDefaultLyricsFontSize(sbData.defaultLyricsFontSize || sbData.defaultFontSize || 14);
           setDefaultChordsFontSize(sbData.defaultChordsFontSize || sbData.defaultFontSize || 14);
           setDefaultShowChords(sbData.defaultShowChords ?? true);
+          setDefaultTargetNotation(sbData.defaultTargetNotation || 'standard');
           setDefaultHeaderFontSize(sbData.defaultHeaderFontSize || 30);
           setDefaultSubheaderFontSize(sbData.defaultSubheaderFontSize || 20);
           setDefaultTocFontSize(sbData.defaultTocFontSize || 18);
@@ -201,6 +203,7 @@ export function SongbookViewPage() {
                   lyricsFontSize: s.lyricsFontSize ?? s.fontSize,
                   chordsFontSize: s.chordsFontSize ?? s.fontSize,
                   showChords: s.showChords,
+                  targetNotation: s.targetNotation,
                   transposeTo: s.transposeTo,
                   headerFontSize: s.headerFontSize,
                   subheaderFontSize: s.subheaderFontSize
@@ -244,6 +247,7 @@ export function SongbookViewPage() {
         if (override.lyricsFontSize !== undefined) songData.lyricsFontSize = override.lyricsFontSize;
         if (override.chordsFontSize !== undefined) songData.chordsFontSize = override.chordsFontSize;
         if (override.showChords !== undefined) songData.showChords = override.showChords;
+        if (override.targetNotation !== undefined) songData.targetNotation = override.targetNotation;
         if (override.transposeTo !== undefined) songData.transposeTo = override.transposeTo;
         if (override.headerFontSize !== undefined) songData.headerFontSize = override.headerFontSize;
         if (override.subheaderFontSize !== undefined) songData.subheaderFontSize = override.subheaderFontSize;
@@ -255,6 +259,7 @@ export function SongbookViewPage() {
         defaultLyricsFontSize,
         defaultChordsFontSize,
         defaultShowChords,
+        defaultTargetNotation,
         defaultHeaderFontSize,
         defaultSubheaderFontSize,
         defaultTocFontSize,
@@ -285,6 +290,7 @@ export function SongbookViewPage() {
     if (key === 'lyricsFontSize') setDefaultLyricsFontSize(value);
     if (key === 'chordsFontSize') setDefaultChordsFontSize(value);
     if (key === 'showChords') setDefaultShowChords(value);
+    if (key === 'targetNotation') setDefaultTargetNotation(value);
     if (key === 'headerFontSize') setDefaultHeaderFontSize(value);
     if (key === 'subheaderFontSize') setDefaultSubheaderFontSize(value);
     if (key === 'tocFontSize') setDefaultTocFontSize(value);
@@ -389,10 +395,8 @@ export function SongbookViewPage() {
           </Button>
           
           <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="print:hidden">
-                <Settings className="w-4 h-4 mr-2" /> Layout
-              </Button>
+            <PopoverTrigger render={<Button variant="outline" size="sm" className="print:hidden" />}>
+              <Settings className="w-4 h-4 mr-2" /> Layout
             </PopoverTrigger>
             <PopoverContent className="w-80">
               <div className="space-y-4">
@@ -475,6 +479,21 @@ export function SongbookViewPage() {
                     />
                   </div>
                   <div className="space-y-2 pt-2 border-t">
+                    <Label className="flex items-center gap-2">Chord Notation</Label>
+                    <Select 
+                      value={defaultTargetNotation} 
+                      onValueChange={(v) => updateGlobal('targetNotation', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard (B, Bb)</SelectItem>
+                        <SelectItem value="german">German (H, B)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
                     <Label className="flex items-center gap-2">Page Numbering</Label>
                     <Select 
                       value={pageNumberingStyle} 
@@ -538,13 +557,16 @@ export function SongbookViewPage() {
             const lSize = override.lyricsFontSize ?? defaultLyricsFontSize;
             const cSize = override.chordsFontSize ?? defaultChordsFontSize;
             const chords = override.showChords ?? defaultShowChords;
+            const targetNotation = override.targetNotation ?? defaultTargetNotation;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
             const transposeTo = override.transposeTo;
+            const sourceNotation = song.baseNotation || 'standard';
+            const translatedBaseKey = song.baseKey ? formatNote(normalizeNote(song.baseKey, sourceNotation), targetNotation) : '';
             
             let transposeSteps = 0;
             if (song.baseKey && transposeTo) {
-              transposeSteps = calculateSteps(song.baseKey, transposeTo);
+              transposeSteps = calculateSteps(song.baseKey, transposeTo, sourceNotation, targetNotation);
             }
 
             return (
@@ -568,6 +590,8 @@ export function SongbookViewPage() {
                   showChords={chords}
                   transposeSteps={transposeSteps}
                   targetKey={transposeTo || song.baseKey || 'C'}
+                  sourceNotation={sourceNotation}
+                  targetNotation={targetNotation}
                 />
               </div>
             );
@@ -608,22 +632,23 @@ export function SongbookViewPage() {
             const lSize = override.lyricsFontSize ?? defaultLyricsFontSize;
             const cSize = override.chordsFontSize ?? defaultChordsFontSize;
             const chords = override.showChords ?? defaultShowChords;
+            const targetNotation = override.targetNotation ?? defaultTargetNotation;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
             const transposeTo = override.transposeTo;
+            const sourceNotation = song.baseNotation || 'standard';
+            const translatedBaseKey = song.baseKey ? formatNote(normalizeNote(song.baseKey, sourceNotation), targetNotation) : '';
             
             let transposeSteps = 0;
             if (song.baseKey && transposeTo) {
-              transposeSteps = calculateSteps(song.baseKey, transposeTo);
+              transposeSteps = calculateSteps(song.baseKey, transposeTo, sourceNotation, targetNotation);
             }
 
             const settingsPopover = (
               <div className="absolute top-4 right-4 z-10 print:hidden opacity-0 group-hover:opacity-100 transition-opacity">
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Settings className="w-4 h-4 mr-2" /> Song Settings
-                    </Button>
+                  <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+                    <Settings className="w-4 h-4 mr-2" /> Song Settings
                   </PopoverTrigger>
                   <PopoverContent className="w-80">
                     <div className="space-y-4">
@@ -696,14 +721,14 @@ export function SongbookViewPage() {
                           <div className="space-y-2">
                             <Label className="flex items-center gap-2"><Music className="w-4 h-4"/> Transpose To</Label>
                             <Select 
-                              value={transposeTo || song.baseKey} 
+                              value={transposeTo || translatedBaseKey} 
                               onValueChange={(v) => updateOverride(song.id, 'transposeTo', v)}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Key" />
                               </SelectTrigger>
                               <SelectContent>
-                                {KEYS.map(k => (
+                                {(targetNotation === 'german' ? GERMAN_KEYS : KEYS).map(k => (
                                   <SelectItem key={k} value={k}>{k}</SelectItem>
                                 ))}
                               </SelectContent>
@@ -711,6 +736,21 @@ export function SongbookViewPage() {
                             <p className="text-xs text-muted-foreground">Base Key: {song.baseKey}</p>
                           </div>
                         )}
+                        <div className="space-y-2 pt-2 border-t">
+                          <Label className="flex items-center gap-2">Chord Notation</Label>
+                          <Select 
+                            value={targetNotation} 
+                            onValueChange={(v) => updateOverride(song.id, 'targetNotation', v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="standard">Standard (B, Bb)</SelectItem>
+                              <SelectItem value="german">German (H, B)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         {!song.baseKey && (
                           <p className="text-xs text-muted-foreground italic">
                             Transposition unavailable because no base key is set for this song.
@@ -761,6 +801,8 @@ export function SongbookViewPage() {
                       showChords={chords}
                       transposeSteps={transposeSteps}
                       targetKey={transposeTo || song.baseKey || 'C'}
+                      sourceNotation={sourceNotation}
+                      targetNotation={targetNotation}
                     />
                   </>
                 }

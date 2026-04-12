@@ -1,12 +1,14 @@
 import React from 'react';
 import { parseChordPro } from '../lib/chordpro';
-import { transposeChord } from '../lib/transpose';
+import { transposeChord, Notation } from '../lib/transpose';
 
 export function ChordProViewer({ 
   text, 
   className = '',
   transposeSteps = 0,
   targetKey = 'C',
+  sourceNotation = 'standard',
+  targetNotation = 'standard',
   showChords = true,
   lyricsFontSize = 14,
   chordsFontSize = 14,
@@ -18,6 +20,8 @@ export function ChordProViewer({
   className?: string,
   transposeSteps?: number,
   targetKey?: string,
+  sourceNotation?: Notation,
+  targetNotation?: Notation,
   showChords?: boolean,
   lyricsFontSize?: number,
   chordsFontSize?: number,
@@ -87,9 +91,15 @@ export function ChordProViewer({
             return (
               <div key={i} className="flex flex-wrap items-end mb-1 break-inside-avoid">
                 {line.parts?.map((part: any, j: number) => {
-                  const chord = part.chord && transposeSteps !== 0 
-                    ? transposeChord(part.chord, transposeSteps, targetKey) 
-                    : part.chord;
+                  let chord = part.chord;
+                  if (chord) {
+                    if (transposeSteps !== 0) {
+                      chord = transposeChord(chord, transposeSteps, targetKey, sourceNotation, targetNotation);
+                    } else if (sourceNotation !== targetNotation) {
+                      // Even if no transpose steps, we might need to translate notation
+                      chord = transposeChord(chord, 0, targetKey, sourceNotation, targetNotation);
+                    }
+                  }
                     
                   return (
                     <div key={j} className="flex flex-col">
