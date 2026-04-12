@@ -24,6 +24,48 @@ import {
 } from "../components/ui/dialog";
 import { ChordProViewer } from '../components/ChordProViewer';
 
+const PaginatedContent = ({ 
+  content, 
+  columns, 
+  pageCount, 
+  startPage, 
+  getPageNumberAlignment,
+  settingsPopover
+}: any) => {
+  const pages = [];
+  for (let p = 0; p < pageCount; p++) {
+    const pageNum = startPage + p;
+    pages.push(
+      <div key={p} className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] h-[297mm] print:w-[210mm] print:h-[297mm] p-4 md:p-12 print:py-[15mm] print:px-[15mm] flex flex-col print:!bg-none overflow-hidden group">
+        
+        {p === 0 && settingsPopover}
+
+        <div className="relative w-full h-full overflow-hidden">
+           <div 
+             style={{
+               position: 'absolute',
+               top: 0,
+               left: `calc(-${p} * (100% + 8mm))`,
+               width: '100%',
+               height: '100%',
+               columnCount: columns,
+               columnGap: '8mm',
+               columnFill: 'auto'
+             }}
+           >
+             {content}
+           </div>
+        </div>
+
+        <div className={`absolute bottom-[15mm] text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`}>
+          {pageNum}
+        </div>
+      </div>
+    );
+  }
+  return <>{pages}</>;
+};
+
 export function SongbookViewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,6 +86,7 @@ export function SongbookViewPage() {
   const [defaultHeaderFontSize, setDefaultHeaderFontSize] = useState(30);
   const [defaultSubheaderFontSize, setDefaultSubheaderFontSize] = useState(20);
   const [defaultTocFontSize, setDefaultTocFontSize] = useState(18);
+  const [pageNumberingStyle, setPageNumberingStyle] = useState<'standard' | 'reversed'>('standard');
   const [songOverrides, setSongOverrides] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -60,30 +103,42 @@ export function SongbookViewPage() {
       const newPageCounts: Record<string, number> = {};
       
       let currentPage = 1; // Title page is 1
-      
-      const titleEl = document.getElementById('page-title');
-      if (titleEl) {
-        const pages = Math.max(1, Math.ceil((titleEl.offsetHeight - 5) / 1122.5));
-        newPageCounts['title'] = pages;
-        currentPage += pages;
-      }
+      newPageCounts['title'] = 1;
+      currentPage += 1;
 
       setTocPage(currentPage);
       
-      const tocEl = document.getElementById('page-toc');
+      const tocEl = document.getElementById('measure-toc');
       if (tocEl) {
-        const pages = Math.max(1, Math.ceil((tocEl.offsetHeight - 5) / 1122.5));
-        newPageCounts['toc'] = pages;
-        currentPage += pages;
+        const containerWidth = tocEl.clientWidth;
+        const scrollWidth = tocEl.scrollWidth;
+        if (containerWidth > 0) {
+          const pages = Math.max(1, Math.ceil((scrollWidth - 2) / (containerWidth + 30)));
+          newPageCounts['toc'] = pages;
+          currentPage += pages;
+        } else {
+          newPageCounts['toc'] = 1;
+          currentPage += 1;
+        }
+      } else {
+        newPageCounts['toc'] = 1;
+        currentPage += 1;
       }
 
       songs.forEach(song => {
         newPageStarts[song.id] = currentPage;
-        const songEl = document.getElementById(`page-song-${song.id}`);
+        const songEl = document.getElementById(`measure-song-${song.id}`);
         if (songEl) {
-          const pages = Math.max(1, Math.ceil((songEl.offsetHeight - 5) / 1122.5));
-          newPageCounts[song.id] = pages;
-          currentPage += pages;
+          const containerWidth = songEl.clientWidth;
+          const scrollWidth = songEl.scrollWidth;
+          if (containerWidth > 0) {
+            const pages = Math.max(1, Math.ceil((scrollWidth - 2) / (containerWidth + 30)));
+            newPageCounts[song.id] = pages;
+            currentPage += pages;
+          } else {
+            newPageCounts[song.id] = 1;
+            currentPage += 1;
+          }
         } else {
           newPageCounts[song.id] = 1;
           currentPage += 1;
@@ -127,6 +182,7 @@ export function SongbookViewPage() {
           setDefaultHeaderFontSize(sbData.defaultHeaderFontSize || 30);
           setDefaultSubheaderFontSize(sbData.defaultSubheaderFontSize || 20);
           setDefaultTocFontSize(sbData.defaultTocFontSize || 18);
+          setPageNumberingStyle(sbData.pageNumberingStyle || 'standard');
           
           const overrides: Record<string, any> = {};
           
@@ -195,6 +251,7 @@ export function SongbookViewPage() {
         defaultHeaderFontSize,
         defaultSubheaderFontSize,
         defaultTocFontSize,
+        pageNumberingStyle,
         songs: updatedSongs
       }, { merge: true });
       
@@ -223,7 +280,19 @@ export function SongbookViewPage() {
     if (key === 'headerFontSize') setDefaultHeaderFontSize(value);
     if (key === 'subheaderFontSize') setDefaultSubheaderFontSize(value);
     if (key === 'tocFontSize') setDefaultTocFontSize(value);
+    if (key === 'pageNumberingStyle') setPageNumberingStyle(value);
     setHasUnsavedChanges(true);
+  };
+
+  const getPageNumberAlignment = (pageNum: number) => {
+    const isOdd = pageNum % 2 !== 0;
+    if (pageNumberingStyle === 'standard') {
+      // Standard: Odd = Right, Even = Left
+      return isOdd ? 'right-8 md:right-12 print:right-8 text-right' : 'left-8 md:left-12 print:left-8 text-left';
+    } else {
+      // Reversed: Odd = Left, Even = Right
+      return isOdd ? 'left-8 md:left-12 print:left-8 text-left' : 'right-8 md:right-12 print:right-8 text-right';
+    }
   };
 
   if (loading) return <div className="p-8">Loading...</div>;
@@ -233,11 +302,8 @@ export function SongbookViewPage() {
   const hasSharedGroup = userGroupIds.some(gId => (songbook.groupIds || []).includes(gId));
   const canEdit = isOwner || isAdmin || hasSharedGroup;
 
-  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] md:min-h-[297mm] print:w-[210mm] print:min-h-[297mm] p-4 md:p-12 print:py-12 print:px-8 flex flex-col print:!bg-none";
-  const pageStyle = {
-    backgroundImage: 'linear-gradient(to bottom, transparent calc(297mm - 2px), #e2e8f0 calc(297mm - 2px), #e2e8f0 297mm)',
-    backgroundSize: '100% 297mm'
-  };
+  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] h-[297mm] print:w-[210mm] print:h-[297mm] p-4 md:p-12 print:py-[15mm] print:px-[15mm] flex flex-col print:!bg-none";
+  const pageStyle = {};
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl print:p-0 print:max-w-none print:m-0">
@@ -293,8 +359,10 @@ export function SongbookViewPage() {
           </Button>
           
           <Popover>
-            <PopoverTrigger render={<Button variant="outline" size="sm" className="print:hidden" />}>
-              <Settings className="w-4 h-4 mr-2" /> Layout
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="print:hidden">
+                <Settings className="w-4 h-4 mr-2" /> Layout
+              </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80">
               <div className="space-y-4">
@@ -365,6 +433,21 @@ export function SongbookViewPage() {
                       onCheckedChange={(v) => updateGlobal('showChords', v)} 
                     />
                   </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="flex items-center gap-2">Page Numbering</Label>
+                    <Select 
+                      value={pageNumberingStyle} 
+                      onValueChange={(v) => updateGlobal('pageNumberingStyle', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard (Odd=Right, Even=Left)</SelectItem>
+                        <SelectItem value="reversed">Reversed (Odd=Left, Even=Right)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </PopoverContent>
@@ -387,17 +470,16 @@ export function SongbookViewPage() {
       </div>
 
       <div className="space-y-16 print:space-y-0 bg-muted/30 print:bg-transparent py-8 print:py-0">
-        {/* Title Page */}
-        <div id="page-title" className={`${pageClass} items-center justify-center`} style={pageStyle}>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-center">{songbook.title}</h1>
-          <p className="text-xl md:text-2xl text-muted-foreground text-center max-w-2xl">{songbook.description}</p>
-        </div>
-
-        {/* Table of Contents */}
-        <div id="page-toc" className={pageClass} style={pageStyle}>
-          <div className="flex-grow">
-            <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2 }}>Table of Contents</h2>
-            <ul className="space-y-3 max-w-2xl mx-auto columns-1 md:columns-2 print:columns-2 gap-8" style={{ fontSize: `${defaultTocFontSize}px` }}>
+        
+        {/* Hidden Measurement Area */}
+        <div className="absolute top-0 left-0 w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
+          <div 
+            id="measure-toc" 
+            className="w-[180mm] h-[267mm]"
+            style={{ columnCount: 2, columnGap: '8mm', columnFill: 'auto' }}
+          >
+            <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2, columnSpan: 'all' }}>Table of Contents</h2>
+            <ul className="space-y-3" style={{ fontSize: `${defaultTocFontSize}px` }}>
               {songs.map((song, i) => (
                 <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
                   <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
@@ -406,16 +488,73 @@ export function SongbookViewPage() {
               ))}
             </ul>
           </div>
-          {Array.from({ length: pageCounts['toc'] || 1 }).map((_, p) => (
-            <div 
-              key={p} 
-              className="absolute right-8 md:right-12 print:right-8 text-right text-muted-foreground print:text-black bg-background/90 print:bg-white/90 py-1" 
-              style={{ top: `calc(${297 * (p + 1)}mm - 20mm)` }}
-            >
-              {tocPage + p}
-            </div>
-          ))}
+
+          {songs.map((song, i) => {
+            const override = songOverrides[song.id] || {};
+            const cols = override.columns ?? defaultColumns;
+            const size = override.fontSize ?? defaultFontSize;
+            const chords = override.showChords ?? defaultShowChords;
+            const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
+            const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
+            const transposeTo = override.transposeTo;
+            
+            let transposeSteps = 0;
+            if (song.baseKey && transposeTo) {
+              transposeSteps = calculateSteps(song.baseKey, transposeTo);
+            }
+
+            return (
+              <div 
+                key={song.id}
+                id={`measure-song-${song.id}`}
+                className="w-[180mm] h-[267mm]"
+                style={{ columnCount: cols, columnGap: '8mm', columnFill: 'auto' }}
+              >
+                <div className="mb-6 break-inside-avoid" style={{ columnSpan: 'all' }}>
+                  <h2 className="font-bold" style={{ fontSize: `${headerSize}px`, lineHeight: 1.2 }}>{song.title}</h2>
+                  <p className="text-muted-foreground" style={{ fontSize: `${subheaderSize}px`, lineHeight: 1.2 }}>{song.author}</p>
+                </div>
+                <ChordProViewer 
+                  text={song.lyrics} 
+                  columns={1}
+                  fontSize={size}
+                  headerFontSize={headerSize}
+                  subheaderFontSize={subheaderSize}
+                  showChords={chords}
+                  transposeSteps={transposeSteps}
+                  targetKey={transposeTo || song.baseKey || 'C'}
+                />
+              </div>
+            );
+          })}
         </div>
+
+        {/* Title Page */}
+        <div id="page-title" className={`${pageClass} items-center justify-center`} style={pageStyle}>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-center">{songbook.title}</h1>
+          <p className="text-xl md:text-2xl text-muted-foreground text-center max-w-2xl">{songbook.description}</p>
+        </div>
+
+        {/* Table of Contents */}
+        <PaginatedContent
+          columns={2}
+          pageCount={pageCounts['toc'] || 1}
+          startPage={tocPage}
+          getPageNumberAlignment={getPageNumberAlignment}
+          content={
+            <>
+              <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2, columnSpan: 'all' }}>Table of Contents</h2>
+              <ul className="space-y-3" style={{ fontSize: `${defaultTocFontSize}px` }}>
+                {songs.map((song, i) => (
+                  <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
+                    <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
+                    <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          }
+        />
 
         {/* Songs */}
         {songs.map((song, i) => {
@@ -432,142 +571,142 @@ export function SongbookViewPage() {
               transposeSteps = calculateSteps(song.baseKey, transposeTo);
             }
 
+            const settingsPopover = (
+              <div className="absolute top-4 right-4 z-10 print:hidden opacity-0 group-hover:opacity-100 transition-opacity">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Settings className="w-4 h-4 mr-2" /> Song Settings
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-4">
+                      <h4 className="font-medium leading-none">Song Overrides</h4>
+                      <div className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2"><Columns className="w-4 h-4"/> Columns</Label>
+                            <span className="text-sm text-muted-foreground">{cols}</span>
+                          </div>
+                          <Slider 
+                            value={[cols]} 
+                            min={1} max={3} step={1}
+                            onValueChange={(v) => updateOverride(song.id, 'columns', Array.isArray(v) ? v[0] : v)} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Font Size</Label>
+                            <span className="text-sm text-muted-foreground">{size}px</span>
+                          </div>
+                          <Slider 
+                            value={[size]} 
+                            min={10} max={24} step={1}
+                            onValueChange={(v) => updateOverride(song.id, 'fontSize', Array.isArray(v) ? v[0] : v)} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Header Size</Label>
+                            <span className="text-sm text-muted-foreground">{headerSize}px</span>
+                          </div>
+                          <Slider 
+                            value={[headerSize]} 
+                            min={16} max={48} step={1}
+                            onValueChange={(v) => updateOverride(song.id, 'headerFontSize', Array.isArray(v) ? v[0] : v)} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Subheader Size</Label>
+                            <span className="text-sm text-muted-foreground">{subheaderSize}px</span>
+                          </div>
+                          <Slider 
+                            value={[subheaderSize]} 
+                            min={12} max={36} step={1}
+                            onValueChange={(v) => updateOverride(song.id, 'subheaderFontSize', Array.isArray(v) ? v[0] : v)} 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between pt-2">
+                          <Label className="flex items-center gap-2"><Hash className="w-4 h-4"/> Show Chords</Label>
+                          <Switch 
+                            checked={chords} 
+                            onCheckedChange={(v) => updateOverride(song.id, 'showChords', v)} 
+                          />
+                        </div>
+                        
+                        {song.baseKey && (
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-2"><Music className="w-4 h-4"/> Transpose To</Label>
+                            <Select 
+                              value={transposeTo || song.baseKey} 
+                              onValueChange={(v) => updateOverride(song.id, 'transposeTo', v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Key" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {KEYS.map(k => (
+                                  <SelectItem key={k} value={k}>{k}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Base Key: {song.baseKey}</p>
+                          </div>
+                        )}
+                        {!song.baseKey && (
+                          <p className="text-xs text-muted-foreground italic">
+                            Transposition unavailable because no base key is set for this song.
+                          </p>
+                        )}
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full mt-2"
+                          onClick={() => {
+                            const newOverrides = { ...songOverrides };
+                            delete newOverrides[song.id];
+                            setSongOverrides(newOverrides);
+                            setHasUnsavedChanges(true);
+                          }}
+                        >
+                          Reset to Defaults
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            );
+
             return (
-              <div id={`page-song-${song.id}`} key={song.id} className={`${pageClass} group`} style={pageStyle}>
-                <div className="flex-grow">
-                  <div className="mb-6 flex justify-between items-start">
-                    <div>
+              <PaginatedContent
+                key={song.id}
+                columns={cols}
+                pageCount={pageCounts[song.id] || 1}
+                startPage={pageStarts[song.id] || i + 3}
+                getPageNumberAlignment={getPageNumberAlignment}
+                settingsPopover={canEdit ? settingsPopover : null}
+                content={
+                  <>
+                    <div className="mb-6 break-inside-avoid" style={{ columnSpan: 'all' }}>
                       <h2 className="font-bold" style={{ fontSize: `${headerSize}px`, lineHeight: 1.2 }}>{song.title}</h2>
                       <p className="text-muted-foreground" style={{ fontSize: `${subheaderSize}px`, lineHeight: 1.2 }}>{song.author}</p>
                     </div>
-                  
-                  {/* Per-song settings */}
-                  <div className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Popover>
-                      <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-                        <Settings className="w-4 h-4 mr-2" /> Song Settings
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80">
-                        <div className="space-y-4">
-                          <h4 className="font-medium leading-none">Song Overrides</h4>
-                          <div className="space-y-4 pt-2">
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="flex items-center gap-2"><Columns className="w-4 h-4"/> Columns</Label>
-                                <span className="text-sm text-muted-foreground">{cols}</span>
-                              </div>
-                              <Slider 
-                                value={[cols]} 
-                                min={1} max={3} step={1}
-                                onValueChange={(v) => updateOverride(song.id, 'columns', Array.isArray(v) ? v[0] : v)} 
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Font Size</Label>
-                                <span className="text-sm text-muted-foreground">{size}px</span>
-                              </div>
-                              <Slider 
-                                value={[size]} 
-                                min={10} max={24} step={1}
-                                onValueChange={(v) => updateOverride(song.id, 'fontSize', Array.isArray(v) ? v[0] : v)} 
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Header Size</Label>
-                                <span className="text-sm text-muted-foreground">{headerSize}px</span>
-                              </div>
-                              <Slider 
-                                value={[headerSize]} 
-                                min={16} max={48} step={1}
-                                onValueChange={(v) => updateOverride(song.id, 'headerFontSize', Array.isArray(v) ? v[0] : v)} 
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Subheader Size</Label>
-                                <span className="text-sm text-muted-foreground">{subheaderSize}px</span>
-                              </div>
-                              <Slider 
-                                value={[subheaderSize]} 
-                                min={12} max={36} step={1}
-                                onValueChange={(v) => updateOverride(song.id, 'subheaderFontSize', Array.isArray(v) ? v[0] : v)} 
-                              />
-                            </div>
-                            <div className="flex items-center justify-between pt-2">
-                              <Label className="flex items-center gap-2"><Hash className="w-4 h-4"/> Show Chords</Label>
-                              <Switch 
-                                checked={chords} 
-                                onCheckedChange={(v) => updateOverride(song.id, 'showChords', v)} 
-                              />
-                            </div>
-                            
-                            {song.baseKey && (
-                              <div className="space-y-2">
-                                <Label className="flex items-center gap-2"><Music className="w-4 h-4"/> Transpose To</Label>
-                                <Select 
-                                  value={transposeTo || song.baseKey} 
-                                  onValueChange={(v) => updateOverride(song.id, 'transposeTo', v)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select Key" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {KEYS.map(k => (
-                                      <SelectItem key={k} value={k}>{k}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground">Base Key: {song.baseKey}</p>
-                              </div>
-                            )}
-                            {!song.baseKey && (
-                              <p className="text-xs text-muted-foreground italic">
-                                Transposition unavailable because no base key is set for this song.
-                              </p>
-                            )}
-                            
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="w-full mt-2"
-                              onClick={() => {
-                                const newOverrides = { ...songOverrides };
-                                delete newOverrides[song.id];
-                                setSongOverrides(newOverrides);
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              Reset to Defaults
-                            </Button>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                <ChordProViewer 
-                  text={song.lyrics} 
-                  columns={cols}
-                  fontSize={size}
-                  headerFontSize={headerSize}
-                  subheaderFontSize={subheaderSize}
-                  showChords={chords}
-                  transposeSteps={transposeSteps}
-                  targetKey={transposeTo || song.baseKey || 'C'}
-                />
-                </div>
-                {Array.from({ length: pageCounts[song.id] || 1 }).map((_, p) => (
-                  <div 
-                    key={p} 
-                    className="absolute right-8 md:right-12 print:right-8 text-right text-muted-foreground print:text-black bg-background/90 print:bg-white/90 py-1" 
-                    style={{ top: `calc(${297 * (p + 1)}mm - 20mm)` }}
-                  >
-                    {(pageStarts[song.id] || i + 3) + p}
-                  </div>
-                ))}
-              </div>
+                    <ChordProViewer 
+                      text={song.lyrics} 
+                      columns={1}
+                      fontSize={size}
+                      headerFontSize={headerSize}
+                      subheaderFontSize={subheaderSize}
+                      showChords={chords}
+                      transposeSteps={transposeSteps}
+                      targetKey={transposeTo || song.baseKey || 'C'}
+                    />
+                  </>
+                }
+              />
             );
           })}
         {songs.length === 0 && (
