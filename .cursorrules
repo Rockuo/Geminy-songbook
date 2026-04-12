@@ -1,0 +1,25 @@
+# Cursor AI Rules
+
+## Project Context
+Songbook Editor - A React/Firebase app for managing and printing chord sheets.
+
+## Tech Stack
+- React, TypeScript, Vite
+- Tailwind CSS
+- Firebase (Firestore, Auth)
+- `@base-ui/react`
+
+## Rules
+1. **TypeScript**: Always use strict types. Avoid `any`.
+2. **Styling**: Use Tailwind CSS utility classes.
+3. **UI Components**: 
+   - Built on `@base-ui/react`.
+   - **DO NOT** use `asChild` on Base UI components. Use the `render` prop (e.g., `render={<Button />}`).
+4. **Firebase**:
+   - Adhere strictly to the schema defined in `firestore.rules`.
+   - If you need to add a field to a document, you MUST update `firestore.rules` first.
+5. **Domain**:
+   - Chord parsing logic is in `ChordProViewer.tsx`.
+   - Transposition logic is in `src/lib/transpose.ts`. Supports Standard (B, Bb) and German (H, B) notations.
+6. **Printing**:
+   - `SongbookViewPage.tsx` handles A4 print layouts. Preserve `@media print` styles and column layouts.

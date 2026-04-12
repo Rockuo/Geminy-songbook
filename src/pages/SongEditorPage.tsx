@@ -8,8 +8,16 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { ChordProViewer } from '../components/ChordProViewer';
-import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info } from 'lucide-react';
 import { KEYS, GERMAN_KEYS } from '../lib/transpose';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../components/ui/dialog';
 
 const DEFAULT_LYRICS = `{sov}
 {comment: Verse 1}
@@ -283,7 +291,49 @@ export function SongEditorPage() {
             )}
 
             <div className="space-y-2 flex-1 flex flex-col">
-              <Label>Lyrics & Chords (ChordPro format)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Lyrics & Chords</Label>
+                <Dialog>
+                  <DialogTrigger render={<Button variant="ghost" size="sm" className="h-6 px-2 text-xs" />}>
+                    <Info className="w-3 h-3 mr-1" /> Formatting Help
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Formatting Cheatsheet</DialogTitle>
+                      <DialogDescription>
+                        Use the following tags to format your song.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 text-sm">
+                      <div>
+                        <h4 className="font-semibold mb-1">Chords</h4>
+                        <p className="text-muted-foreground">Place chords in square brackets inline with lyrics.</p>
+                        <code className="bg-muted px-1 py-0.5 rounded text-xs block mt-1">
+                          [C]Hello [G]world
+                        </code>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Song Sections</h4>
+                        <p className="text-muted-foreground">Wrap sections with start and end tags to format them.</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 text-muted-foreground">
+                          <li><code className="bg-muted px-1 py-0.5 rounded text-xs">{"{sov}"}</code> / <code className="bg-muted px-1 py-0.5 rounded text-xs">{"{eov}"}</code> - Verse</li>
+                          <li><code className="bg-muted px-1 py-0.5 rounded text-xs">{"{soc}"}</code> / <code className="bg-muted px-1 py-0.5 rounded text-xs">{"{eoc}"}</code> - Chorus</li>
+                          <li><code className="bg-muted px-1 py-0.5 rounded text-xs">{"{sob}"}</code> / <code className="bg-muted px-1 py-0.5 rounded text-xs">{"{eob}"}</code> - Bridge</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Directives</h4>
+                        <p className="text-muted-foreground">Add metadata or comments.</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 text-muted-foreground">
+                          <li><code className="bg-muted px-1 py-0.5 rounded text-xs">{"{title: Song Name}"}</code> or <code className="bg-muted px-1 py-0.5 rounded text-xs">{"{t: Song Name}"}</code></li>
+                          <li><code className="bg-muted px-1 py-0.5 rounded text-xs">{"{subtitle: Artist}"}</code> or <code className="bg-muted px-1 py-0.5 rounded text-xs">{"{st: Artist}"}</code></li>
+                          <li><code className="bg-muted px-1 py-0.5 rounded text-xs">{"{comment: Note}"}</code> or <code className="bg-muted px-1 py-0.5 rounded text-xs">{"{c: Note}"}</code></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <Textarea 
                 className="flex-1 font-mono text-sm resize-none min-h-[300px]" 
                 value={lyrics} 
