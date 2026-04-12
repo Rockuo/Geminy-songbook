@@ -37,19 +37,19 @@ const PaginatedContent = ({
     const pageNum = startPage + p;
     pages.push(
       <div key={p} 
-           className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] print:w-[210mm] p-4 md:p-[15mm] print:!bg-none overflow-hidden group block"
+           className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] print:w-[210mm] p-4 md:p-[15mm] print:p-[15mm] print:!bg-none overflow-hidden group flex flex-col justify-between"
            style={{ height: '297mm', minHeight: '297mm', maxHeight: '297mm', boxSizing: 'border-box' }}>
         
         {p === 0 && settingsPopover}
 
-        <div className="relative w-full overflow-hidden" style={{ height: '267mm' }}>
+        <div className="relative w-full overflow-hidden" style={{ height: '257mm', minHeight: '257mm', maxHeight: '257mm', flex: 'none' }}>
            <div 
              style={{
                position: 'absolute',
                top: 0,
                left: `calc(-${p} * (100% + 8mm))`,
                width: '100%',
-               height: '267mm',
+               height: '257mm',
                columnCount: columns,
                columnGap: '8mm',
                columnFill: 'auto'
@@ -59,7 +59,7 @@ const PaginatedContent = ({
            </div>
         </div>
 
-        <div className={`absolute bottom-[10mm] left-[15mm] right-[15mm] text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`}>
+        <div className={`w-full text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`} style={{ height: '10mm', minHeight: '10mm', maxHeight: '10mm', flex: 'none', display: 'flex', alignItems: 'flex-end', justifyContent: pageNum % 2 !== 0 ? (getPageNumberAlignment(pageNum).includes('right') ? 'flex-end' : 'flex-start') : (getPageNumberAlignment(pageNum).includes('right') ? 'flex-end' : 'flex-start') }}>
           {pageNum}
         </div>
       </div>
@@ -304,7 +304,7 @@ export function SongbookViewPage() {
   const hasSharedGroup = userGroupIds.some(gId => (songbook.groupIds || []).includes(gId));
   const canEdit = isOwner || isAdmin || hasSharedGroup;
 
-  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] print:w-[210mm] p-4 md:p-[15mm] print:!bg-none";
+  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] print:w-[210mm] p-4 md:p-[15mm] print:p-[15mm] print:!bg-none overflow-hidden group";
   const pageStyle = { height: '297mm', minHeight: '297mm', maxHeight: '297mm', boxSizing: 'border-box' as const };
 
   return (
@@ -477,8 +477,8 @@ export function SongbookViewPage() {
         <div className="absolute top-0 left-0 w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
           <div 
             id="measure-toc" 
-            className="w-[180mm] h-[267mm]"
-            style={{ columnCount: 2, columnGap: '8mm', columnFill: 'auto' }}
+            className="w-[180mm]"
+            style={{ height: '257mm', columnCount: 2, columnGap: '8mm', columnFill: 'auto' }}
           >
             <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2, columnSpan: 'all', WebkitColumnSpan: 'all' }}>Table of Contents</h2>
             <ul className="space-y-3" style={{ fontSize: `${defaultTocFontSize}px` }}>
@@ -509,8 +509,8 @@ export function SongbookViewPage() {
               <div 
                 key={song.id}
                 id={`measure-song-${song.id}`}
-                className="w-[180mm] h-[267mm]"
-                style={{ columnCount: cols, columnGap: '8mm', columnFill: 'auto' }}
+                className="w-[180mm]"
+                style={{ height: '257mm', columnCount: cols, columnGap: '8mm', columnFill: 'auto' }}
               >
                 <div className="mb-6 break-inside-avoid" style={{ columnSpan: 'all', WebkitColumnSpan: 'all' }}>
                   <h2 className="font-bold" style={{ fontSize: `${headerSize}px`, lineHeight: 1.2 }}>{song.title}</h2>
