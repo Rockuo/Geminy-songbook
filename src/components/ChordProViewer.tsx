@@ -8,7 +8,8 @@ export function ChordProViewer({
   transposeSteps = 0,
   targetKey = 'C',
   showChords = true,
-  fontSize = 14,
+  lyricsFontSize = 14,
+  chordsFontSize = 14,
   headerFontSize = 24,
   subheaderFontSize = 20,
   columns = 1
@@ -18,7 +19,8 @@ export function ChordProViewer({
   transposeSteps?: number,
   targetKey?: string,
   showChords?: boolean,
-  fontSize?: number,
+  lyricsFontSize?: number,
+  chordsFontSize?: number,
   headerFontSize?: number,
   subheaderFontSize?: number,
   columns?: number
@@ -68,7 +70,7 @@ export function ChordProViewer({
   const columnClass = columns === 1 ? '' : columns === 2 ? 'md:columns-2 print:columns-2 gap-8' : 'md:columns-3 print:columns-3 gap-8';
   
   return (
-    <div className={`font-mono leading-relaxed ${columnClass} ${className}`} style={{ fontSize: `${fontSize}px` }}>
+    <div className={`font-mono leading-relaxed ${columnClass} ${className}`} style={{ fontSize: `${lyricsFontSize}px` }}>
       {blocks.map((block, bIdx) => (
         <div key={bIdx} className={`break-inside-avoid mb-6 ${block.type === 'chorus' ? 'border-l-4 border-primary/40 pl-4 py-1' : ''}`}>
           {block.lines.map((line, i) => {
@@ -92,7 +94,7 @@ export function ChordProViewer({
                   return (
                     <div key={j} className="flex flex-col">
                       {showChords && chord ? (
-                        <span className="text-primary font-bold h-5 -mb-1" style={{ fontSize: `${fontSize * 0.9}px` }}>{chord}</span>
+                        <span className="text-primary font-bold h-5 -mb-1" style={{ fontSize: `${chordsFontSize}px` }}>{chord}</span>
                       ) : showChords ? (
                         <span className="h-5 -mb-1"></span>
                       ) : null}

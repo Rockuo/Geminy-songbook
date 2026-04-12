@@ -83,12 +83,13 @@ export function SongbookViewPage() {
   
   // Layout state
   const [defaultColumns, setDefaultColumns] = useState(2);
-  const [defaultFontSize, setDefaultFontSize] = useState(14);
+  const [defaultLyricsFontSize, setDefaultLyricsFontSize] = useState(14);
+  const [defaultChordsFontSize, setDefaultChordsFontSize] = useState(14);
   const [defaultShowChords, setDefaultShowChords] = useState(true);
   const [defaultHeaderFontSize, setDefaultHeaderFontSize] = useState(30);
   const [defaultSubheaderFontSize, setDefaultSubheaderFontSize] = useState(20);
   const [defaultTocFontSize, setDefaultTocFontSize] = useState(18);
-  const [pageNumberingStyle, setPageNumberingStyle] = useState<'standard' | 'reversed'>('standard');
+  const [pageNumberingStyle, setPageNumberingStyle] = useState<'standard' | 'reversed' | 'center' | 'always-right'>('standard');
   const [songOverrides, setSongOverrides] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -152,7 +153,7 @@ export function SongbookViewPage() {
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [songs, defaultColumns, defaultFontSize, defaultHeaderFontSize, defaultSubheaderFontSize, defaultTocFontSize, songOverrides, loading, songbook]);
+  }, [songs, defaultColumns, defaultLyricsFontSize, defaultChordsFontSize, defaultHeaderFontSize, defaultSubheaderFontSize, defaultTocFontSize, songOverrides, loading, songbook]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -179,7 +180,8 @@ export function SongbookViewPage() {
           setSongbook({ id: sbDoc.id, ...sbData });
           
           setDefaultColumns(sbData.defaultColumns || 2);
-          setDefaultFontSize(sbData.defaultFontSize || 14);
+          setDefaultLyricsFontSize(sbData.defaultLyricsFontSize || sbData.defaultFontSize || 14);
+          setDefaultChordsFontSize(sbData.defaultChordsFontSize || sbData.defaultFontSize || 14);
           setDefaultShowChords(sbData.defaultShowChords ?? true);
           setDefaultHeaderFontSize(sbData.defaultHeaderFontSize || 30);
           setDefaultSubheaderFontSize(sbData.defaultSubheaderFontSize || 20);
@@ -196,7 +198,8 @@ export function SongbookViewPage() {
                 sbSongs.push({ id: songDoc.id, ...songDoc.data(), order: s.order });
                 overrides[songDoc.id] = {
                   columns: s.columns,
-                  fontSize: s.fontSize,
+                  lyricsFontSize: s.lyricsFontSize ?? s.fontSize,
+                  chordsFontSize: s.chordsFontSize ?? s.fontSize,
                   showChords: s.showChords,
                   transposeTo: s.transposeTo,
                   headerFontSize: s.headerFontSize,
@@ -238,7 +241,8 @@ export function SongbookViewPage() {
           order: s.order
         };
         if (override.columns !== undefined) songData.columns = override.columns;
-        if (override.fontSize !== undefined) songData.fontSize = override.fontSize;
+        if (override.lyricsFontSize !== undefined) songData.lyricsFontSize = override.lyricsFontSize;
+        if (override.chordsFontSize !== undefined) songData.chordsFontSize = override.chordsFontSize;
         if (override.showChords !== undefined) songData.showChords = override.showChords;
         if (override.transposeTo !== undefined) songData.transposeTo = override.transposeTo;
         if (override.headerFontSize !== undefined) songData.headerFontSize = override.headerFontSize;
@@ -248,7 +252,8 @@ export function SongbookViewPage() {
       
       await setDoc(doc(db, 'songbooks', id), {
         defaultColumns,
-        defaultFontSize,
+        defaultLyricsFontSize,
+        defaultChordsFontSize,
         defaultShowChords,
         defaultHeaderFontSize,
         defaultSubheaderFontSize,
@@ -277,7 +282,8 @@ export function SongbookViewPage() {
 
   const updateGlobal = (key: string, value: any) => {
     if (key === 'columns') setDefaultColumns(value);
-    if (key === 'fontSize') setDefaultFontSize(value);
+    if (key === 'lyricsFontSize') setDefaultLyricsFontSize(value);
+    if (key === 'chordsFontSize') setDefaultChordsFontSize(value);
     if (key === 'showChords') setDefaultShowChords(value);
     if (key === 'headerFontSize') setDefaultHeaderFontSize(value);
     if (key === 'subheaderFontSize') setDefaultSubheaderFontSize(value);
@@ -288,7 +294,11 @@ export function SongbookViewPage() {
 
   const getPageNumberAlignment = (pageNum: number) => {
     const isOdd = pageNum % 2 !== 0;
-    if (pageNumberingStyle === 'standard') {
+    if (pageNumberingStyle === 'center') {
+      return 'text-center';
+    } else if (pageNumberingStyle === 'always-right') {
+      return 'text-right';
+    } else if (pageNumberingStyle === 'standard') {
       // Standard: Odd = Right, Even = Left
       return isOdd ? 'text-right' : 'text-left';
     } else {
@@ -404,13 +414,24 @@ export function SongbookViewPage() {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Font Size</Label>
-                      <span className="text-sm text-muted-foreground">{defaultFontSize}px</span>
+                      <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Lyrics Size</Label>
+                      <span className="text-sm text-muted-foreground">{defaultLyricsFontSize}px</span>
                     </div>
                     <Slider 
-                      value={[defaultFontSize]} 
+                      value={[defaultLyricsFontSize]} 
                       min={10} max={24} step={1}
-                      onValueChange={(v) => updateGlobal('fontSize', Array.isArray(v) ? v[0] : v)} 
+                      onValueChange={(v) => updateGlobal('lyricsFontSize', Array.isArray(v) ? v[0] : v)} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Chords Size</Label>
+                      <span className="text-sm text-muted-foreground">{defaultChordsFontSize}px</span>
+                    </div>
+                    <Slider 
+                      value={[defaultChordsFontSize]} 
+                      min={10} max={24} step={1}
+                      onValueChange={(v) => updateGlobal('chordsFontSize', Array.isArray(v) ? v[0] : v)} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -465,6 +486,8 @@ export function SongbookViewPage() {
                       <SelectContent>
                         <SelectItem value="standard">Standard (Odd=Right, Even=Left)</SelectItem>
                         <SelectItem value="reversed">Reversed (Odd=Left, Even=Right)</SelectItem>
+                        <SelectItem value="center">Center</SelectItem>
+                        <SelectItem value="always-right">Always Right</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -512,7 +535,8 @@ export function SongbookViewPage() {
           {songs.map((song, i) => {
             const override = songOverrides[song.id] || {};
             const cols = override.columns ?? defaultColumns;
-            const size = override.fontSize ?? defaultFontSize;
+            const lSize = override.lyricsFontSize ?? defaultLyricsFontSize;
+            const cSize = override.chordsFontSize ?? defaultChordsFontSize;
             const chords = override.showChords ?? defaultShowChords;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
@@ -537,7 +561,8 @@ export function SongbookViewPage() {
                 <ChordProViewer 
                   text={song.lyrics} 
                   columns={1}
-                  fontSize={size}
+                  lyricsFontSize={lSize}
+                  chordsFontSize={cSize}
                   headerFontSize={headerSize}
                   subheaderFontSize={subheaderSize}
                   showChords={chords}
@@ -580,7 +605,8 @@ export function SongbookViewPage() {
         {songs.map((song, i) => {
             const override = songOverrides[song.id] || {};
             const cols = override.columns ?? defaultColumns;
-            const size = override.fontSize ?? defaultFontSize;
+            const lSize = override.lyricsFontSize ?? defaultLyricsFontSize;
+            const cSize = override.chordsFontSize ?? defaultChordsFontSize;
             const chords = override.showChords ?? defaultShowChords;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
@@ -616,13 +642,24 @@ export function SongbookViewPage() {
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Font Size</Label>
-                            <span className="text-sm text-muted-foreground">{size}px</span>
+                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Lyrics Size</Label>
+                            <span className="text-sm text-muted-foreground">{lSize}px</span>
                           </div>
                           <Slider 
-                            value={[size]} 
+                            value={[lSize]} 
                             min={10} max={24} step={1}
-                            onValueChange={(v) => updateOverride(song.id, 'fontSize', Array.isArray(v) ? v[0] : v)} 
+                            onValueChange={(v) => updateOverride(song.id, 'lyricsFontSize', Array.isArray(v) ? v[0] : v)} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Chords Size</Label>
+                            <span className="text-sm text-muted-foreground">{cSize}px</span>
+                          </div>
+                          <Slider 
+                            value={[cSize]} 
+                            min={10} max={24} step={1}
+                            onValueChange={(v) => updateOverride(song.id, 'chordsFontSize', Array.isArray(v) ? v[0] : v)} 
                           />
                         </div>
                         <div className="space-y-2">
@@ -717,7 +754,8 @@ export function SongbookViewPage() {
                     <ChordProViewer 
                       text={song.lyrics} 
                       columns={1}
-                      fontSize={size}
+                      lyricsFontSize={lSize}
+                      chordsFontSize={cSize}
                       headerFontSize={headerSize}
                       subheaderFontSize={subheaderSize}
                       showChords={chords}
