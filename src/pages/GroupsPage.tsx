@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, setDoc, deleteDoc, getDocs, where, or, documentId } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '../components/ui/button';
@@ -20,19 +20,45 @@ export function GroupsPage() {
   useEffect(() => {
     if (!user) return;
     
-    const qGroups = query(collection(db, 'groups'));
-    const unsubGroups = onSnapshot(qGroups, (snapshot) => {
-      setGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    let unsubGroups: () => void;
+    let unsubUsers: () => void;
+
+    const unsubUser = onSnapshot(doc(db, 'users', user.uid), (userSnap) => {
+      let localIsAdmin = user.email === 'xbures29@gmail.com';
+      let localUserGroupIds: string[] = [];
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        localIsAdmin = data.role === 'admin';
+        localUserGroupIds = data.groupIds || [];
+      }
+
+      if (unsubGroups) unsubGroups();
+
+      let qGroups;
+      if (localIsAdmin) {
+        qGroups = query(collection(db, 'groups'));
+      } else {
+        const conditions = [where('ownerId', '==', user.uid)];
+        if (localUserGroupIds.length > 0) {
+          conditions.push(where(documentId(), 'in', localUserGroupIds));
+        }
+        qGroups = query(collection(db, 'groups'), or(...conditions));
+      }
+
+      unsubGroups = onSnapshot(qGroups, (snapshot) => {
+        setGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
     });
 
     const qUsers = query(collection(db, 'users'));
-    const unsubUsers = onSnapshot(qUsers, (snapshot) => {
+    unsubUsers = onSnapshot(qUsers, (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
     return () => {
-      unsubGroups();
-      unsubUsers();
+      unsubUser();
+      if (unsubGroups) unsubGroups();
+      if (unsubUsers) unsubUsers();
     };
   }, [user]);
 

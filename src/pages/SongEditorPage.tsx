@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, query, getDocs, where, or, documentId } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '../components/ui/button';
@@ -90,14 +90,19 @@ export function SongEditorPage() {
 
   useEffect(() => {
     const loadData = async () => {
+      let localUserGroupIds: string[] = [];
+      let localIsAdmin = false;
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            setUserGroupIds(userDoc.data().groupIds || []);
-            setIsAdmin(userDoc.data().role === 'admin');
+            localUserGroupIds = userDoc.data().groupIds || [];
+            setUserGroupIds(localUserGroupIds);
+            localIsAdmin = userDoc.data().role === 'admin';
+            setIsAdmin(localIsAdmin);
           } else {
-            setIsAdmin(user.email === 'xbures29@gmail.com');
+            localIsAdmin = user.email === 'xbures29@gmail.com';
+            setIsAdmin(localIsAdmin);
           }
         } catch (e) {
           console.error("Error loading user", e);
@@ -105,9 +110,21 @@ export function SongEditorPage() {
       }
 
       try {
-        const qGroups = query(collection(db, 'groups'));
-        const groupsSnap = await getDocs(qGroups);
-        setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        let qGroups;
+        if (localIsAdmin) {
+          qGroups = query(collection(db, 'groups'));
+        } else if (user) {
+          const conditions = [where('ownerId', '==', user.uid)];
+          if (localUserGroupIds.length > 0) {
+            conditions.push(where(documentId(), 'in', localUserGroupIds));
+          }
+          qGroups = query(collection(db, 'groups'), or(...conditions));
+        }
+        
+        if (qGroups) {
+          const groupsSnap = await getDocs(qGroups);
+          setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
       } catch (e) {
         console.error("Could not load groups", e);
       }

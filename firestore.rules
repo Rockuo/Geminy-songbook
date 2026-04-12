@@ -102,6 +102,11 @@ service cloud.firestore {
       return userGroups.size() > 0 && resGroups.size() > 0 && userGroups.hasAny(resGroups);
     }
     
+    function isGroupMember(groupId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc != null && 'groupIds' in userDoc.data && userDoc.data.groupIds.hasAny([groupId]);
+    }
+    
     // ===============================================================
     // Domain Validators
     // ===============================================================
@@ -178,9 +183,9 @@ service cloud.firestore {
     }
     
     match /groups/{groupId} {
-      allow read: if isAllowedUser();
+      allow read: if isAllowedUser() && (isDocOwner() || isGroupMember(groupId) || isAdmin());
       allow create: if isAllowedUser() && isValidGroup(request.resource.data);
-      allow update: if isAllowedUser() && isDocOwner() && isValidGroup(request.resource.data) && 
+      allow update: if isAllowedUser() && (isDocOwner() || isGroupMember(groupId) || isAdmin()) && isValidGroup(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
       allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
     }
