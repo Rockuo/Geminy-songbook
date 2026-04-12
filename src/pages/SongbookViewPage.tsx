@@ -36,11 +36,11 @@ const PaginatedContent = ({
   for (let p = 0; p < pageCount; p++) {
     const pageNum = startPage + p;
     pages.push(
-      <div key={p} className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] h-[297mm] print:w-[210mm] print:h-[297mm] p-4 md:p-12 print:py-[15mm] print:px-[15mm] flex flex-col print:!bg-none overflow-hidden group">
+      <div key={p} className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] h-[297mm] print:w-[210mm] print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] p-4 md:p-12 print:py-[15mm] print:px-[15mm] flex flex-col print:!bg-none overflow-hidden group">
         
         {p === 0 && settingsPopover}
 
-        <div className="relative w-full h-full overflow-hidden">
+        <div className="relative w-full flex-grow overflow-hidden">
            <div 
              style={{
                position: 'absolute',
@@ -57,7 +57,7 @@ const PaginatedContent = ({
            </div>
         </div>
 
-        <div className={`absolute bottom-[15mm] text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`}>
+        <div className={`mt-auto pt-4 text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`}>
           {pageNum}
         </div>
       </div>
@@ -288,10 +288,10 @@ export function SongbookViewPage() {
     const isOdd = pageNum % 2 !== 0;
     if (pageNumberingStyle === 'standard') {
       // Standard: Odd = Right, Even = Left
-      return isOdd ? 'right-8 md:right-12 print:right-8 text-right' : 'left-8 md:left-12 print:left-8 text-left';
+      return isOdd ? 'text-right' : 'text-left';
     } else {
       // Reversed: Odd = Left, Even = Right
-      return isOdd ? 'left-8 md:left-12 print:left-8 text-left' : 'right-8 md:right-12 print:right-8 text-right';
+      return isOdd ? 'text-left' : 'text-right';
     }
   };
 
@@ -302,7 +302,7 @@ export function SongbookViewPage() {
   const hasSharedGroup = userGroupIds.some(gId => (songbook.groupIds || []).includes(gId));
   const canEdit = isOwner || isAdmin || hasSharedGroup;
 
-  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] h-[297mm] print:w-[210mm] print:h-[297mm] p-4 md:p-12 print:py-[15mm] print:px-[15mm] flex flex-col print:!bg-none";
+  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] h-[297mm] print:w-[210mm] print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] p-4 md:p-12 print:py-[15mm] print:px-[15mm] flex flex-col print:!bg-none";
   const pageStyle = {};
 
   return (
