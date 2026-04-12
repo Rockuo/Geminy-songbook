@@ -37,19 +37,19 @@ const PaginatedContent = ({
     const pageNum = startPage + p;
     pages.push(
       <div key={p} 
-           className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] print:w-[210mm] p-4 md:p-[15mm] print:p-[15mm] print:!bg-none overflow-hidden group flex flex-col justify-between"
-           style={{ height: '297mm', minHeight: '297mm', maxHeight: '297mm', boxSizing: 'border-box' }}>
+           className="bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 relative w-full md:w-[210mm] print:w-[210mm] print:!bg-none overflow-hidden group block print-page-container"
+           style={{ height: '297mm', boxSizing: 'border-box' }}>
         
         {p === 0 && settingsPopover}
 
-        <div className="relative w-full overflow-hidden" style={{ height: '257mm', minHeight: '257mm', maxHeight: '257mm', flex: 'none' }}>
+        <div className="absolute top-[15mm] left-[15mm] right-[15mm] bottom-[25mm] overflow-hidden">
            <div 
              style={{
                position: 'absolute',
                top: 0,
                left: `calc(-${p} * (100% + 8mm))`,
                width: '100%',
-               height: '257mm',
+               height: '100%',
                columnCount: columns,
                columnGap: '8mm',
                columnFill: 'auto'
@@ -59,7 +59,7 @@ const PaginatedContent = ({
            </div>
         </div>
 
-        <div className={`w-full text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`} style={{ height: '10mm', minHeight: '10mm', maxHeight: '10mm', flex: 'none', display: 'flex', alignItems: 'flex-end', justifyContent: pageNum % 2 !== 0 ? (getPageNumberAlignment(pageNum).includes('right') ? 'flex-end' : 'flex-start') : (getPageNumberAlignment(pageNum).includes('right') ? 'flex-end' : 'flex-start') }}>
+        <div className={`absolute bottom-[10mm] left-[15mm] right-[15mm] text-muted-foreground print:text-black ${getPageNumberAlignment(pageNum)}`}>
           {pageNum}
         </div>
       </div>
@@ -304,8 +304,8 @@ export function SongbookViewPage() {
   const hasSharedGroup = userGroupIds.some(gId => (songbook.groupIds || []).includes(gId));
   const canEdit = isOwner || isAdmin || hasSharedGroup;
 
-  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 print:break-after-page relative w-full md:w-[210mm] print:w-[210mm] p-4 md:p-[15mm] print:p-[15mm] print:!bg-none overflow-hidden group";
-  const pageStyle = { height: '297mm', minHeight: '297mm', maxHeight: '297mm', boxSizing: 'border-box' as const };
+  const pageClass = "bg-background md:bg-white md:shadow-lg mx-auto mb-8 print:shadow-none print:mb-0 relative w-full md:w-[210mm] print:w-[210mm] print:!bg-none overflow-hidden group block print-page-container";
+  const pageStyle = { height: '297mm', boxSizing: 'border-box' as const };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl print:p-0 print:max-w-none print:m-0">
@@ -314,11 +314,26 @@ export function SongbookViewPage() {
           @media print {
             @page {
               size: A4;
-              margin: 0;
+              margin: 0 !important;
             }
-            body {
-              margin: 0;
+            html, body {
+              width: 210mm;
+              height: 297mm;
+              margin: 0 !important;
+              padding: 0 !important;
               -webkit-print-color-adjust: exact;
+              background: white;
+            }
+            .print-page-container {
+              width: 210mm !important;
+              height: 297mm !important;
+              min-height: 297mm !important;
+              max-height: 297mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              page-break-after: always !important;
+              break-after: page !important;
+              box-sizing: border-box;
             }
           }
         `}
@@ -335,7 +350,10 @@ export function SongbookViewPage() {
                 To print or export to PDF, please open the app in a new tab using the <strong>Open in new tab</strong> button (usually an arrow icon <ExternalLink className="inline w-4 h-4" />) in the top right corner of the AI Studio preview window.
               </p>
               <p>
-                Once opened in a new tab, the Print button will work normally!
+                <strong>For the best result, please set "Margins" to "None" and uncheck "Headers and footers" in your print dialog!</strong>
+              </p>
+              <p>
+                Once opened in a new tab, the Print button will work normally.
               </p>
             </DialogDescription>
           </DialogHeader>
