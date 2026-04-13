@@ -88,6 +88,8 @@ export function ChordProViewer({
               return <div key={i} className="text-muted-foreground italic break-inside-avoid">[{line.content}]</div>;
             }
             
+            const hasChordsInLine = line.parts?.some((part: any) => !!part.chord);
+            
             return (
               <div key={i} className="flex flex-wrap items-end mb-1 break-inside-avoid">
                 {line.parts?.map((part: any, j: number) => {
@@ -105,7 +107,7 @@ export function ChordProViewer({
                     <div key={j} className="flex flex-col">
                       {showChords && chord ? (
                         <span className="text-primary font-bold h-5 -mb-1" style={{ fontSize: `${chordsFontSize}px` }}>{chord}</span>
-                      ) : showChords ? (
+                      ) : (showChords && hasChordsInLine) ? (
                         <span className="h-5 -mb-1"></span>
                       ) : null}
                       <span className="whitespace-pre">{part.lyric || (showChords && chord ? ' ' : '')}</span>
