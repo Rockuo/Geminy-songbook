@@ -88,6 +88,12 @@ export function SongEditorPage() {
   
   const [loading, setLoading] = useState(true);
 
+  // Preview layout state
+  const [previewColumns, setPreviewColumns] = useState(2);
+  const [previewLyricsFontSize, setPreviewLyricsFontSize] = useState(14);
+  const [previewChordsFontSize, setPreviewChordsFontSize] = useState(14);
+  const [previewPageCount, setPreviewPageCount] = useState(1);
+
   useEffect(() => {
     const loadData = async () => {
       let localUserGroupIds: string[] = [];
@@ -148,6 +154,23 @@ export function SongEditorPage() {
     };
     loadData();
   }, [id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const songEl = document.getElementById('measure-preview-song');
+      if (songEl) {
+        const containerWidth = songEl.clientWidth;
+        const scrollWidth = songEl.scrollWidth;
+        if (containerWidth > 0) {
+          const pages = Math.max(1, Math.ceil((scrollWidth - 2) / (containerWidth + 30)));
+          setPreviewPageCount(pages);
+        } else {
+          setPreviewPageCount(1);
+        }
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [lyrics, previewColumns, previewLyricsFontSize, previewChordsFontSize, title, author]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -362,20 +385,114 @@ export function SongEditorPage() {
         )}
 
         {/* Preview Pane */}
-        <div className={`w-full ${canEdit ? 'md:w-1/2' : ''} bg-background overflow-y-auto p-8`}>
-          <div className="max-w-2xl mx-auto">
-            {!canEdit && (
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold">{title}</h1>
-                <p className="text-muted-foreground text-lg">{author}</p>
-                <div className="flex gap-2 mt-2">
-                  {genre && <span className="inline-block text-xs bg-secondary px-2 py-1 rounded-full">{genre}</span>}
-                  {baseKey && <span className="inline-block text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">Key: {baseKey}</span>}
+        <div className={`w-full ${canEdit ? 'md:w-1/2' : ''} bg-muted/30 overflow-y-auto p-4 md:p-8 relative flex flex-col items-center`}>
+          
+          {/* Settings Bar */}
+          <div className="w-full max-w-[210mm] mb-4 bg-card p-4 rounded-lg border shadow-sm flex flex-wrap gap-4 items-center justify-between">
+            <div className="text-sm font-medium">Print Preview ({previewPageCount} page{previewPageCount > 1 ? 's' : ''})</div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Columns</Label>
+                <select 
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  value={previewColumns}
+                  onChange={e => setPreviewColumns(Number(e.target.value))}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Lyrics Size</Label>
+                <input 
+                  type="number" 
+                  className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs"
+                  value={previewLyricsFontSize}
+                  onChange={e => setPreviewLyricsFontSize(Number(e.target.value))}
+                  min={8} max={32}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Chords Size</Label>
+                <input 
+                  type="number" 
+                  className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs"
+                  value={previewChordsFontSize}
+                  onChange={e => setPreviewChordsFontSize(Number(e.target.value))}
+                  min={8} max={32}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Paginated Pages */}
+          <div className="flex flex-col gap-8 w-full items-center">
+            {Array.from({ length: previewPageCount }).map((_, p) => (
+              <div key={p} 
+                   className="bg-white shadow-lg relative w-full max-w-[210mm] overflow-hidden group block"
+                   style={{ height: '297mm', boxSizing: 'border-box', flexShrink: 0 }}>
+                
+                <div className="absolute top-[15mm] left-[15mm] right-[15mm] bottom-[25mm] overflow-hidden">
+                   <div 
+                     style={{
+                       position: 'absolute',
+                       top: 0,
+                       left: `calc(-${p} * (100% + 8mm))`,
+                       width: '100%',
+                       height: '100%',
+                       columnCount: previewColumns,
+                       columnGap: '8mm',
+                       columnFill: 'auto'
+                     }}
+                   >
+                    <div className="mb-6 break-inside-avoid" style={{ columnSpan: 'all', WebkitColumnSpan: 'all' }}>
+                      <h2 className="font-bold" style={{ fontSize: '30px', lineHeight: 1.2 }}>{title || 'Untitled'}</h2>
+                      <p className="text-muted-foreground" style={{ fontSize: '20px', lineHeight: 1.2 }}>{author || 'Unknown'}</p>
+                    </div>
+                    <ChordProViewer 
+                      text={lyrics} 
+                      columns={1}
+                      lyricsFontSize={previewLyricsFontSize}
+                      chordsFontSize={previewChordsFontSize}
+                      headerFontSize={30}
+                      subheaderFontSize={20}
+                      sourceNotation={baseNotation} 
+                      targetNotation={baseNotation}
+                    />
+                   </div>
+                </div>
+
+                <div className="absolute bottom-[10mm] left-[15mm] right-[15mm] text-muted-foreground text-center text-sm">
+                  Page {p + 1} of {previewPageCount}
                 </div>
               </div>
-            )}
-            <ChordProViewer text={lyrics} sourceNotation={baseNotation} targetNotation={baseNotation} />
+            ))}
           </div>
+        </div>
+      </div>
+
+      {/* Hidden container for measuring pagination */}
+      <div className="absolute opacity-0 pointer-events-none -z-10" style={{ top: '-10000px', left: '-10000px' }}>
+        <div 
+          id="measure-preview-song"
+          className="w-[180mm]"
+          style={{ height: '257mm', columnCount: previewColumns, columnGap: '8mm', columnFill: 'auto' }}
+        >
+          <div className="mb-6 break-inside-avoid" style={{ columnSpan: 'all', WebkitColumnSpan: 'all' }}>
+            <h2 className="font-bold" style={{ fontSize: '30px', lineHeight: 1.2 }}>{title || 'Untitled'}</h2>
+            <p className="text-muted-foreground" style={{ fontSize: '20px', lineHeight: 1.2 }}>{author || 'Unknown'}</p>
+          </div>
+          <ChordProViewer 
+            text={lyrics} 
+            columns={1}
+            lyricsFontSize={previewLyricsFontSize}
+            chordsFontSize={previewChordsFontSize}
+            headerFontSize={30}
+            subheaderFontSize={20}
+            sourceNotation={baseNotation} 
+            targetNotation={baseNotation}
+          />
         </div>
       </div>
     </div>
