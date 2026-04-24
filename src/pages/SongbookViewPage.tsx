@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, query, getDocs } from 'firebase/firest
 import { db, auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '../components/ui/button';
-import { Settings, Type, Columns, Hash, Music, ArrowLeft, Edit, Printer, ExternalLink } from 'lucide-react';
+import { Settings, Type, Columns, Hash, Music, ArrowLeft, Edit, Printer, ExternalLink, Save } from 'lucide-react';
 import { calculateSteps, KEYS, GERMAN_KEYS, formatNote, normalizeNote } from '../lib/transpose';
 import {
   Popover,
@@ -856,6 +856,15 @@ export function SongbookViewPage() {
           </div>
         )}
       </div>
+
+      {hasUnsavedChanges && canEdit && (
+        <div className="fixed bottom-8 right-8 z-50 print:hidden">
+          <Button size="lg" onClick={handleSaveLayout} className="shadow-xl rounded-full px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95">
+            <Save className="w-5 h-5 mr-2" />
+            Save Layout Changes
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
