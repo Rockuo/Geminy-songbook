@@ -32,3 +32,6 @@ This is a web application for managing and printing songbooks. It parses a simpl
 - Use functional components and React hooks.
 - Use Tailwind CSS for all styling. Do not write custom CSS unless it's for specific print media queries.
 - Ensure all interactive elements are accessible.
+
+## Documentation
+- **CRITICAL IMPERATIVE**: You must ALWAYS keep the `docs/FUNCTIONALITY.md` and `docs/CODEBASE.md` files up to date whenever you add new features, modify behavior, or change architectural choices in the codebase.
