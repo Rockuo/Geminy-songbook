@@ -273,7 +273,8 @@ export function SongbookViewPage() {
         pageNumberingStyle,
         defaultNumberVerses,
         defaultChorusIndicator,
-        songs: updatedSongs
+        songs: updatedSongs,
+        updatedAt: Date.now()
       }, { merge: true });
       
       setHasUnsavedChanges(false);
