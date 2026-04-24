@@ -94,6 +94,7 @@ export function SongbookViewPage() {
   const [pageNumberingStyle, setPageNumberingStyle] = useState<'standard' | 'reversed' | 'center' | 'always-right'>('standard');
   const [defaultNumberVerses, setDefaultNumberVerses] = useState(false);
   const [defaultChorusIndicator, setDefaultChorusIndicator] = useState("");
+  const [defaultLineSpacing, setDefaultLineSpacing] = useState(1.0);
   const [songOverrides, setSongOverrides] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -194,6 +195,7 @@ export function SongbookViewPage() {
           setPageNumberingStyle(sbData.pageNumberingStyle || 'standard');
           setDefaultNumberVerses(sbData.defaultNumberVerses ?? false);
           setDefaultChorusIndicator(sbData.defaultChorusIndicator || "");
+          setDefaultLineSpacing(sbData.defaultLineSpacing !== undefined ? sbData.defaultLineSpacing : 1.0);
           
           const overrides: Record<string, any> = {};
           
@@ -273,6 +275,7 @@ export function SongbookViewPage() {
         pageNumberingStyle,
         defaultNumberVerses,
         defaultChorusIndicator,
+        defaultLineSpacing,
         songs: updatedSongs,
         updatedAt: Date.now()
       }, { merge: true });
@@ -307,6 +310,7 @@ export function SongbookViewPage() {
     if (key === 'pageNumberingStyle') setPageNumberingStyle(value);
     if (key === 'numberVerses') setDefaultNumberVerses(value);
     if (key === 'chorusIndicator') setDefaultChorusIndicator(value);
+    if (key === 'lineSpacing') setDefaultLineSpacing(value);
     setHasUnsavedChanges(true);
   };
 
@@ -483,6 +487,17 @@ export function SongbookViewPage() {
                       onValueChange={(v) => updateGlobal('tocFontSize', Array.isArray(v) ? v[0] : v)} 
                     />
                   </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Line Spacing</Label>
+                      <span className="text-sm text-muted-foreground">{defaultLineSpacing.toFixed(1)}x</span>
+                    </div>
+                    <Slider 
+                      value={[defaultLineSpacing]} 
+                      min={0.5} max={2.0} step={0.1}
+                      onValueChange={(v) => updateGlobal('lineSpacing', Array.isArray(v) ? v[0] : v)} 
+                    />
+                  </div>
                   <div className="flex items-center justify-between pt-2">
                     <Label className="flex items-center gap-2"><Hash className="w-4 h-4"/> Show Chords</Label>
                     <Switch 
@@ -588,6 +603,7 @@ export function SongbookViewPage() {
             const targetNotation = override.targetNotation ?? defaultTargetNotation;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
+            const lineSp = override.lineSpacing ?? defaultLineSpacing;
             const transposeTo = override.transposeTo;
             const sourceNotation = song.baseNotation || 'standard';
             const translatedBaseKey = song.baseKey ? formatNote(normalizeNote(song.baseKey, sourceNotation), targetNotation) : '';
@@ -618,6 +634,7 @@ export function SongbookViewPage() {
                   showChords={chords}
                   numberVerses={numVerses}
                   chorusIndicator={defaultChorusIndicator}
+                  lineSpacing={lineSp}
                   transposeSteps={transposeSteps}
                   targetKey={transposeTo || song.baseKey || 'C'}
                   sourceNotation={sourceNotation}
@@ -666,6 +683,7 @@ export function SongbookViewPage() {
             const targetNotation = override.targetNotation ?? defaultTargetNotation;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
+            const lineSp = override.lineSpacing ?? defaultLineSpacing;
             const transposeTo = override.transposeTo;
             const sourceNotation = song.baseNotation || 'standard';
             const translatedBaseKey = song.baseKey ? formatNote(normalizeNote(song.baseKey, sourceNotation), targetNotation) : '';
@@ -738,6 +756,17 @@ export function SongbookViewPage() {
                             value={[subheaderSize]} 
                             min={12} max={36} step={1}
                             onValueChange={(v) => updateOverride(song.id, 'subheaderFontSize', Array.isArray(v) ? v[0] : v)} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Line Spacing</Label>
+                            <span className="text-sm text-muted-foreground">{lineSp.toFixed(1)}x</span>
+                          </div>
+                          <Slider 
+                            value={[lineSp]} 
+                            min={0.5} max={2.0} step={0.1}
+                            onValueChange={(v) => updateOverride(song.id, 'lineSpacing', Array.isArray(v) ? v[0] : v)} 
                           />
                         </div>
                         <div className="flex items-center justify-between pt-2">
@@ -840,6 +869,7 @@ export function SongbookViewPage() {
                       showChords={chords}
                       numberVerses={numVerses}
                       chorusIndicator={defaultChorusIndicator}
+                      lineSpacing={lineSp}
                       transposeSteps={transposeSteps}
                       targetKey={transposeTo || song.baseKey || 'C'}
                       sourceNotation={sourceNotation}

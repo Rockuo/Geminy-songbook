@@ -144,7 +144,7 @@ service cloud.firestore {
     }
     
     function isValidSongbook(data) {
-      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic', 'groupIds', 'defaultColumns', 'defaultFontSize', 'defaultLyricsFontSize', 'defaultChordsFontSize', 'defaultShowChords', 'defaultTargetNotation', 'defaultHeaderFontSize', 'defaultSubheaderFontSize', 'defaultTocFontSize', 'pageNumberingStyle', 'defaultNumberVerses', 'defaultChorusIndicator']) &&
+      return hasOnlyAllowedFields(['title', 'description', 'ownerId', 'songs', 'createdAt', 'updatedAt', 'isPublic', 'groupIds', 'defaultColumns', 'defaultFontSize', 'defaultLyricsFontSize', 'defaultChordsFontSize', 'defaultShowChords', 'defaultTargetNotation', 'defaultHeaderFontSize', 'defaultSubheaderFontSize', 'defaultTocFontSize', 'pageNumberingStyle', 'defaultNumberVerses', 'defaultChorusIndicator', 'defaultLineSpacing']) &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
              data.ownerId is string &&
@@ -164,7 +164,8 @@ service cloud.firestore {
              (!('defaultTocFontSize' in data) || (data.defaultTocFontSize is number)) &&
              (!('pageNumberingStyle' in data) || (data.pageNumberingStyle is string && data.pageNumberingStyle.size() < 20)) &&
              (!('defaultNumberVerses' in data) || (data.defaultNumberVerses is bool)) &&
-             (!('defaultChorusIndicator' in data) || (data.defaultChorusIndicator is string && data.defaultChorusIndicator.size() < 50));
+             (!('defaultChorusIndicator' in data) || (data.defaultChorusIndicator is string && data.defaultChorusIndicator.size() < 50)) &&
+             (!('defaultLineSpacing' in data) || (data.defaultLineSpacing is number));
     }
     
     // ===============================================================

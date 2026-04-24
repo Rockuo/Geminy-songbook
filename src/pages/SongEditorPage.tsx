@@ -94,6 +94,7 @@ export function SongEditorPage() {
   const [previewLyricsFontSize, setPreviewLyricsFontSize] = useState(14);
   const [previewChordsFontSize, setPreviewChordsFontSize] = useState(14);
   const [previewNumberVerses, setPreviewNumberVerses] = useState(false);
+  const [previewLineSpacing, setPreviewLineSpacing] = useState(1.0);
   const [previewPageCount, setPreviewPageCount] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -173,7 +174,7 @@ export function SongEditorPage() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [lyrics, previewColumns, previewLyricsFontSize, previewChordsFontSize, previewNumberVerses, title, author]);
+  }, [lyrics, previewColumns, previewLyricsFontSize, previewChordsFontSize, previewNumberVerses, previewLineSpacing, title, author]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -505,6 +506,17 @@ export function SongEditorPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
+                <Label className="text-xs">Line Spacing</Label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs"
+                  value={previewLineSpacing}
+                  onChange={e => setPreviewLineSpacing(Number(e.target.value))}
+                  min={0.5} max={2.0}
+                />
+              </div>
+              <div className="flex items-center gap-2">
                 <Label className="text-xs">Number Verses</Label>
                 <input 
                   type="checkbox" 
@@ -548,6 +560,7 @@ export function SongEditorPage() {
                       headerFontSize={30}
                       subheaderFontSize={20}
                       numberVerses={previewNumberVerses}
+                      lineSpacing={previewLineSpacing}
                       sourceNotation={baseNotation} 
                       targetNotation={baseNotation}
                     />
@@ -582,6 +595,7 @@ export function SongEditorPage() {
             headerFontSize={30}
             subheaderFontSize={20}
             numberVerses={previewNumberVerses}
+            lineSpacing={previewLineSpacing}
             sourceNotation={baseNotation} 
             targetNotation={baseNotation}
           />

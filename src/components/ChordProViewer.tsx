@@ -16,7 +16,8 @@ export function ChordProViewer({
   chordsFontSize = 14,
   headerFontSize = 24,
   subheaderFontSize = 20,
-  columns = 1
+  columns = 1,
+  lineSpacing = 1.0
 }: { 
   text: string, 
   className?: string,
@@ -31,7 +32,8 @@ export function ChordProViewer({
   chordsFontSize?: number,
   headerFontSize?: number,
   subheaderFontSize?: number,
-  columns?: number
+  columns?: number,
+  lineSpacing?: number
 }) {
   const lines = parseChordPro(text);
   
@@ -80,16 +82,16 @@ export function ChordProViewer({
   let verseCounter = 1;
 
   return (
-    <div className={`font-mono leading-relaxed ${columnClass} ${className}`} style={{ fontSize: `${lyricsFontSize}px` }}>
+    <div className={`font-mono ${columnClass} ${className}`} style={{ fontSize: `${lyricsFontSize}px`, lineHeight: `${1.625 * lineSpacing}` }}>
       {blocks.map((block, bIdx) => {
         const isVerse = block.type === 'verse';
         const currentVerseNumber = isVerse ? verseCounter++ : null;
         const firstContentLineIndex = block.lines.findIndex(l => l.type !== 'empty' && l.type !== 'directive');
 
         return (
-        <div key={bIdx} className={`break-inside-avoid mb-6 ${(block.type === 'chorus' && !chorusIndicator) ? 'border-l-4 border-primary/40 pl-4 py-1' : ''}`}>
+        <div key={bIdx} className={`break-inside-avoid ${(block.type === 'chorus' && !chorusIndicator) ? 'border-l-4 border-primary/40 pl-4 py-1' : ''}`} style={{ marginBottom: `${1.5 * lineSpacing}rem` }}>
           {block.lines.map((line, i) => {
-            if (line.type === 'empty') return <div key={i} className="h-4" />;
+            if (line.type === 'empty') return <div key={i} style={{ height: `${1 * lineSpacing}rem` }} />;
             if (line.type === 'directive') {
               const [key, ...val] = line.content!.split(':');
               const value = val.join(':').trim();
@@ -102,7 +104,7 @@ export function ChordProViewer({
             const hasChordsInLine = line.parts?.some((part: any) => !!part.chord);
             
             return (
-              <div key={i} className="flex flex-wrap items-end mb-1 break-inside-avoid">
+              <div key={i} className="flex flex-wrap items-end break-inside-avoid" style={{ marginBottom: `${0.25 * lineSpacing}rem` }}>
                 {isVerse && numberVerses && i === firstContentLineIndex && (
                    <div className="flex flex-col mr-2 font-bold text-muted-foreground">
                       {(showChords && hasChordsInLine) ? <span className="h-5 -mb-1"></span> : null}
