@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, deleteDoc, collection, query, getDocs, where, or, documentId } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -8,8 +8,9 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { ChordProViewer } from '../components/ChordProViewer';
-import { ArrowLeft, Save, Trash2, Info } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info, Upload } from 'lucide-react';
 import { KEYS, GERMAN_KEYS } from '../lib/transpose';
+import { parseHtmlDrop } from '../lib/parsers';
 import {
   Dialog,
   DialogContent,
@@ -94,6 +95,7 @@ export function SongEditorPage() {
   const [previewChordsFontSize, setPreviewChordsFontSize] = useState(14);
   const [previewNumberVerses, setPreviewNumberVerses] = useState(false);
   const [previewPageCount, setPreviewPageCount] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -232,8 +234,61 @@ export function SongEditorPage() {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+        try {
+          const text = await file.text();
+          const result = await parseHtmlDrop(text);
+          if (result.title) setTitle(result.title);
+          if (result.artist) setAuthor(result.artist);
+          if (result.key) {
+             setBaseKey(result.key);
+          }
+          if (result.sourceNotation) {
+             setBaseNotation(result.sourceNotation);
+          }
+          if (result.chordpro) setLyrics(result.chordpro);
+        } catch (err) {
+          console.error("Failed to parse HTML", err);
+          alert((err as Error).message || "Failed to parse the dropped HTML file.");
+        }
+      }
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full flex-1">
+    <div 
+      className="flex flex-col h-full flex-1 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 border-4 border-dashed border-primary backdrop-blur-sm transition-all duration-200">
+          <div className="text-4xl font-bold text-primary flex flex-col items-center gap-4">
+            <Upload className="w-16 h-16 animate-bounce" />
+            Drop saved pisnicky-akordy.cz HTML page here
+          </div>
+        </div>
+      )}
       <div className="border-b bg-card p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
@@ -253,6 +308,31 @@ export function SongEditorPage() {
                 <Trash2 className="w-4 h-4 mr-2" /> Delete
               </Button>
             )}
+            <Dialog>
+              <DialogTrigger render={<Button variant="outline" size="sm" />}>
+                <Upload className="w-4 h-4 mr-2" /> Import Webpage
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Import Song from Web</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 text-sm mt-2">
+                  <p>
+                    You can effortlessly import songs from supported websites like <strong>pisnicky-akordy.cz</strong>.
+                  </p>
+                  <ol className="list-decimal list-inside space-y-3">
+                    <li>Open the song page in your browser.</li>
+                    <li>
+                      Press <kbd className="px-1.5 py-0.5 font-mono text-xs rounded border bg-muted">CTRL+S</kbd> (or <kbd className="px-1.5 py-0.5 font-mono text-xs rounded border bg-muted">CMD+S</kbd> Mac) to save the page to your computer as HTML.
+                    </li>
+                    <li>Drag and drop the saved HTML file anywhere into this editor.</li>
+                  </ol>
+                  <p className="text-muted-foreground pt-4 border-t">
+                    The title, artist, key, and lyrics will be automatically extracted and converted to ChordPro format.
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button size="sm" onClick={handleSave}>
               <Save className="w-4 h-4 mr-2" /> Save
             </Button>
