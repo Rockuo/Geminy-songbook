@@ -49,7 +49,9 @@
         },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" },
-        "isPublic": { "type": "boolean" }
+        "isPublic": { "type": "boolean" },
+        "defaultNumberVerses": { "type": "boolean" },
+        "defaultChorusIndicator": { "type": "string" }
       },
       "required": ["title", "ownerId", "songs", "createdAt", "updatedAt", "isPublic"]
     }

@@ -14,6 +14,7 @@ import {
 import { Label } from "../components/ui/label";
 import { Slider } from "../components/ui/slider";
 import { Switch } from "../components/ui/switch";
+import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import {
   Dialog,
@@ -91,6 +92,8 @@ export function SongbookViewPage() {
   const [defaultSubheaderFontSize, setDefaultSubheaderFontSize] = useState(20);
   const [defaultTocFontSize, setDefaultTocFontSize] = useState(18);
   const [pageNumberingStyle, setPageNumberingStyle] = useState<'standard' | 'reversed' | 'center' | 'always-right'>('standard');
+  const [defaultNumberVerses, setDefaultNumberVerses] = useState(false);
+  const [defaultChorusIndicator, setDefaultChorusIndicator] = useState("");
   const [songOverrides, setSongOverrides] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -189,6 +192,8 @@ export function SongbookViewPage() {
           setDefaultSubheaderFontSize(sbData.defaultSubheaderFontSize || 20);
           setDefaultTocFontSize(sbData.defaultTocFontSize || 18);
           setPageNumberingStyle(sbData.pageNumberingStyle || 'standard');
+          setDefaultNumberVerses(sbData.defaultNumberVerses ?? false);
+          setDefaultChorusIndicator(sbData.defaultChorusIndicator || "");
           
           const overrides: Record<string, any> = {};
           
@@ -206,7 +211,8 @@ export function SongbookViewPage() {
                   targetNotation: s.targetNotation,
                   transposeTo: s.transposeTo,
                   headerFontSize: s.headerFontSize,
-                  subheaderFontSize: s.subheaderFontSize
+                  subheaderFontSize: s.subheaderFontSize,
+                  numberVerses: s.numberVerses
                 };
               }
             } catch (e) {
@@ -251,6 +257,7 @@ export function SongbookViewPage() {
         if (override.transposeTo !== undefined) songData.transposeTo = override.transposeTo;
         if (override.headerFontSize !== undefined) songData.headerFontSize = override.headerFontSize;
         if (override.subheaderFontSize !== undefined) songData.subheaderFontSize = override.subheaderFontSize;
+        if (override.numberVerses !== undefined) songData.numberVerses = override.numberVerses;
         return songData;
       });
       
@@ -264,6 +271,8 @@ export function SongbookViewPage() {
         defaultSubheaderFontSize,
         defaultTocFontSize,
         pageNumberingStyle,
+        defaultNumberVerses,
+        defaultChorusIndicator,
         songs: updatedSongs
       }, { merge: true });
       
@@ -295,6 +304,8 @@ export function SongbookViewPage() {
     if (key === 'subheaderFontSize') setDefaultSubheaderFontSize(value);
     if (key === 'tocFontSize') setDefaultTocFontSize(value);
     if (key === 'pageNumberingStyle') setPageNumberingStyle(value);
+    if (key === 'numberVerses') setDefaultNumberVerses(value);
+    if (key === 'chorusIndicator') setDefaultChorusIndicator(value);
     setHasUnsavedChanges(true);
   };
 
@@ -478,6 +489,21 @@ export function SongbookViewPage() {
                       onCheckedChange={(v) => updateGlobal('showChords', v)} 
                     />
                   </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <Label className="flex items-center gap-2"><Hash className="w-4 h-4"/> Number Verses</Label>
+                    <Switch 
+                      checked={defaultNumberVerses} 
+                      onCheckedChange={(v) => updateGlobal('numberVerses', v)} 
+                    />
+                  </div>
+                  <div className="space-y-2 pt-4">
+                    <Label className="flex items-center gap-2 text-sm">Chorus Indicator Label</Label>
+                    <Input 
+                      placeholder="e.g. R: (leave empty for line)" 
+                      value={defaultChorusIndicator} 
+                      onChange={(e) => updateGlobal('chorusIndicator', e.target.value)} 
+                    />
+                  </div>
                   <div className="space-y-2 pt-2 border-t">
                     <Label className="flex items-center gap-2">Chord Notation</Label>
                     <Select 
@@ -557,6 +583,7 @@ export function SongbookViewPage() {
             const lSize = override.lyricsFontSize ?? defaultLyricsFontSize;
             const cSize = override.chordsFontSize ?? defaultChordsFontSize;
             const chords = override.showChords ?? defaultShowChords;
+            const numVerses = override.numberVerses ?? defaultNumberVerses;
             const targetNotation = override.targetNotation ?? defaultTargetNotation;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
@@ -588,6 +615,8 @@ export function SongbookViewPage() {
                   headerFontSize={headerSize}
                   subheaderFontSize={subheaderSize}
                   showChords={chords}
+                  numberVerses={numVerses}
+                  chorusIndicator={defaultChorusIndicator}
                   transposeSteps={transposeSteps}
                   targetKey={transposeTo || song.baseKey || 'C'}
                   sourceNotation={sourceNotation}
@@ -632,6 +661,7 @@ export function SongbookViewPage() {
             const lSize = override.lyricsFontSize ?? defaultLyricsFontSize;
             const cSize = override.chordsFontSize ?? defaultChordsFontSize;
             const chords = override.showChords ?? defaultShowChords;
+            const numVerses = override.numberVerses ?? defaultNumberVerses;
             const targetNotation = override.targetNotation ?? defaultTargetNotation;
             const headerSize = override.headerFontSize ?? defaultHeaderFontSize;
             const subheaderSize = override.subheaderFontSize ?? defaultSubheaderFontSize;
@@ -716,7 +746,15 @@ export function SongbookViewPage() {
                             onCheckedChange={(v) => updateOverride(song.id, 'showChords', v)} 
                           />
                         </div>
-                        
+
+                        <div className="flex items-center justify-between pt-2">
+                          <Label className="flex items-center gap-2"><Hash className="w-4 h-4"/> Number Verses</Label>
+                          <Switch 
+                            checked={numVerses} 
+                            onCheckedChange={(v) => updateOverride(song.id, 'numberVerses', v)} 
+                          />
+                        </div>
+
                         {song.baseKey && (
                           <div className="space-y-2">
                             <Label className="flex items-center gap-2"><Music className="w-4 h-4"/> Transpose To</Label>
@@ -799,6 +837,8 @@ export function SongbookViewPage() {
                       headerFontSize={headerSize}
                       subheaderFontSize={subheaderSize}
                       showChords={chords}
+                      numberVerses={numVerses}
+                      chorusIndicator={defaultChorusIndicator}
                       transposeSteps={transposeSteps}
                       targetKey={transposeTo || song.baseKey || 'C'}
                       sourceNotation={sourceNotation}

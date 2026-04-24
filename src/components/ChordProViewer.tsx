@@ -10,6 +10,8 @@ export function ChordProViewer({
   sourceNotation = 'standard',
   targetNotation = 'standard',
   showChords = true,
+  numberVerses = false,
+  chorusIndicator = '',
   lyricsFontSize = 14,
   chordsFontSize = 14,
   headerFontSize = 24,
@@ -23,6 +25,8 @@ export function ChordProViewer({
   sourceNotation?: Notation,
   targetNotation?: Notation,
   showChords?: boolean,
+  numberVerses?: boolean,
+  chorusIndicator?: string,
   lyricsFontSize?: number,
   chordsFontSize?: number,
   headerFontSize?: number,
@@ -73,17 +77,24 @@ export function ChordProViewer({
   
   const columnClass = columns === 1 ? '' : columns === 2 ? 'md:columns-2 print:columns-2 gap-8' : 'md:columns-3 print:columns-3 gap-8';
   
+  let verseCounter = 1;
+
   return (
     <div className={`font-mono leading-relaxed ${columnClass} ${className}`} style={{ fontSize: `${lyricsFontSize}px` }}>
-      {blocks.map((block, bIdx) => (
-        <div key={bIdx} className={`break-inside-avoid mb-6 ${block.type === 'chorus' ? 'border-l-4 border-primary/40 pl-4 py-1' : ''}`}>
+      {blocks.map((block, bIdx) => {
+        const isVerse = block.type === 'verse';
+        const currentVerseNumber = isVerse ? verseCounter++ : null;
+        const firstContentLineIndex = block.lines.findIndex(l => l.type !== 'empty' && l.type !== 'directive');
+
+        return (
+        <div key={bIdx} className={`break-inside-avoid mb-6 ${(block.type === 'chorus' && !chorusIndicator) ? 'border-l-4 border-primary/40 pl-4 py-1' : ''}`}>
           {block.lines.map((line, i) => {
             if (line.type === 'empty') return <div key={i} className="h-4" />;
             if (line.type === 'directive') {
               const [key, ...val] = line.content!.split(':');
               const value = val.join(':').trim();
               if (key === 'title' || key === 't') return <h2 key={i} className="font-bold mt-2 mb-2 font-sans break-inside-avoid" style={{ fontSize: `${headerFontSize}px`, lineHeight: 1.2 }}>{value}</h2>;
-              if (key === 'subtitle' || key === 'st') return <h3 key={i} className="font-semibold mb-2 font-sans break-inside-avoid" style={{ fontSize: `${subheaderFontSize}px`, lineHeight: 1.2 }}>{value}</h3>;
+              if (key === 'subtitle' || key === 'st') return <h3 key={i} className="font-bold mb-2 font-sans break-inside-avoid" style={{ fontSize: `${subheaderFontSize}px`, lineHeight: 1.2 }}>{value}</h3>;
               if (key === 'comment' || key === 'c') return <div key={i} className="font-bold bg-muted px-2 py-1 inline-block rounded mt-2 mb-1 font-sans break-inside-avoid">{value}</div>;
               return <div key={i} className="text-muted-foreground italic break-inside-avoid">[{line.content}]</div>;
             }
@@ -92,6 +103,18 @@ export function ChordProViewer({
             
             return (
               <div key={i} className="flex flex-wrap items-end mb-1 break-inside-avoid">
+                {isVerse && numberVerses && i === firstContentLineIndex && (
+                   <div className="flex flex-col mr-2 font-bold text-muted-foreground">
+                      {(showChords && hasChordsInLine) ? <span className="h-5 -mb-1"></span> : null}
+                      <span>{currentVerseNumber}.</span>
+                   </div>
+                )}
+                {block.type === 'chorus' && chorusIndicator && i === firstContentLineIndex && (
+                   <div className="flex flex-col mr-2 font-bold text-muted-foreground">
+                      {(showChords && hasChordsInLine) ? <span className="h-5 -mb-1"></span> : null}
+                      <span>{chorusIndicator}</span>
+                   </div>
+                )}
                 {line.parts?.map((part: any, j: number) => {
                   let chord = part.chord;
                   if (chord) {
@@ -118,7 +141,8 @@ export function ChordProViewer({
             );
           })}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

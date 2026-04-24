@@ -92,6 +92,7 @@ export function SongEditorPage() {
   const [previewColumns, setPreviewColumns] = useState(2);
   const [previewLyricsFontSize, setPreviewLyricsFontSize] = useState(14);
   const [previewChordsFontSize, setPreviewChordsFontSize] = useState(14);
+  const [previewNumberVerses, setPreviewNumberVerses] = useState(false);
   const [previewPageCount, setPreviewPageCount] = useState(1);
 
   useEffect(() => {
@@ -129,7 +130,7 @@ export function SongEditorPage() {
         
         if (qGroups) {
           const groupsSnap = await getDocs(qGroups);
-          setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
         }
       } catch (e) {
         console.error("Could not load groups", e);
@@ -170,7 +171,7 @@ export function SongEditorPage() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [lyrics, previewColumns, previewLyricsFontSize, previewChordsFontSize, title, author]);
+  }, [lyrics, previewColumns, previewLyricsFontSize, previewChordsFontSize, previewNumberVerses, title, author]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -423,6 +424,15 @@ export function SongEditorPage() {
                   min={8} max={32}
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Number Verses</Label>
+                <input 
+                  type="checkbox" 
+                  checked={previewNumberVerses}
+                  onChange={e => setPreviewNumberVerses(e.target.checked)}
+                  className="rounded"
+                />
+              </div>
             </div>
           </div>
 
@@ -457,6 +467,7 @@ export function SongEditorPage() {
                       chordsFontSize={previewChordsFontSize}
                       headerFontSize={30}
                       subheaderFontSize={20}
+                      numberVerses={previewNumberVerses}
                       sourceNotation={baseNotation} 
                       targetNotation={baseNotation}
                     />
@@ -490,6 +501,7 @@ export function SongEditorPage() {
             chordsFontSize={previewChordsFontSize}
             headerFontSize={30}
             subheaderFontSize={20}
+            numberVerses={previewNumberVerses}
             sourceNotation={baseNotation} 
             targetNotation={baseNotation}
           />

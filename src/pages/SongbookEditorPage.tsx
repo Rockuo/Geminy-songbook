@@ -56,14 +56,14 @@ export function SongbookEditorPage() {
       try {
         const publicQuery = query(collection(db, 'songs'), where('isPublic', '==', true));
         const publicSnapshot = await getDocs(publicQuery);
-        const publicSongs = publicSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const publicSongs = publicSnapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         
         let ownedSongs: any[] = [];
         let groupSongs: any[] = [];
         if (user) {
           const ownedQuery = query(collection(db, 'songs'), where('ownerId', '==', user.uid));
           const ownedSnapshot = await getDocs(ownedQuery);
-          ownedSongs = ownedSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          ownedSongs = ownedSnapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
           
           // Fetch user's groups to get group songs
           const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -77,7 +77,7 @@ export function SongbookEditorPage() {
               for (const chunk of chunks) {
                 const groupQuery = query(collection(db, 'songs'), where('groupIds', 'array-contains-any', chunk));
                 const groupSnapshot = await getDocs(groupQuery);
-                groupSongs = [...groupSongs, ...groupSnapshot.docs.map(d => ({ id: d.id, ...d.data() }))];
+                groupSongs = [...groupSongs, ...groupSnapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }))];
               }
             }
           }
@@ -92,7 +92,7 @@ export function SongbookEditorPage() {
         try {
           const q = query(collection(db, 'songs'));
           const snapshot = await getDocs(q);
-          allSongs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          allSongs = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         } catch (adminError) {
           console.error("Admin fallback failed", adminError);
         }
@@ -114,7 +114,7 @@ export function SongbookEditorPage() {
         
         if (qGroups) {
           const groupsSnap = await getDocs(qGroups);
-          setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          setAvailableGroups(groupsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
         }
       } catch (e) {
         console.error("Could not load groups", e);
