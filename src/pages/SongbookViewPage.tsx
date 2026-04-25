@@ -218,7 +218,8 @@ export function SongbookViewPage() {
                   transposeTo: s.transposeTo,
                   headerFontSize: s.headerFontSize,
                   subheaderFontSize: s.subheaderFontSize,
-                  numberVerses: s.numberVerses
+                  numberVerses: s.numberVerses,
+                  lineSpacing: s.lineSpacing
                 };
               }
             } catch (e) {
@@ -264,6 +265,7 @@ export function SongbookViewPage() {
         if (override.headerFontSize !== undefined) songData.headerFontSize = override.headerFontSize;
         if (override.subheaderFontSize !== undefined) songData.subheaderFontSize = override.subheaderFontSize;
         if (override.numberVerses !== undefined) songData.numberVerses = override.numberVerses;
+        if (override.lineSpacing !== undefined) songData.lineSpacing = override.lineSpacing;
         return songData;
       });
       
