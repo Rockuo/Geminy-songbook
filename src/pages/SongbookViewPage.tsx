@@ -91,6 +91,8 @@ export function SongbookViewPage() {
   const [defaultHeaderFontSize, setDefaultHeaderFontSize] = useState(30);
   const [defaultSubheaderFontSize, setDefaultSubheaderFontSize] = useState(20);
   const [defaultTocFontSize, setDefaultTocFontSize] = useState(18);
+  const [defaultTocColumns, setDefaultTocColumns] = useState(2);
+  const [defaultTocFormat, setDefaultTocFormat] = useState<'title-author' | 'title-only' | 'dotted'>('title-author');
   const [pageNumberingStyle, setPageNumberingStyle] = useState<'standard' | 'reversed' | 'center' | 'always-right'>('standard');
   const [defaultNumberVerses, setDefaultNumberVerses] = useState(false);
   const [defaultChorusIndicator, setDefaultChorusIndicator] = useState("");
@@ -192,6 +194,8 @@ export function SongbookViewPage() {
           setDefaultHeaderFontSize(sbData.defaultHeaderFontSize || 30);
           setDefaultSubheaderFontSize(sbData.defaultSubheaderFontSize || 20);
           setDefaultTocFontSize(sbData.defaultTocFontSize || 18);
+          setDefaultTocColumns(sbData.defaultTocColumns || 2);
+          setDefaultTocFormat(sbData.defaultTocFormat || 'title-author');
           setPageNumberingStyle(sbData.pageNumberingStyle || 'standard');
           setDefaultNumberVerses(sbData.defaultNumberVerses ?? false);
           setDefaultChorusIndicator(sbData.defaultChorusIndicator || "");
@@ -272,6 +276,8 @@ export function SongbookViewPage() {
         defaultHeaderFontSize,
         defaultSubheaderFontSize,
         defaultTocFontSize,
+        defaultTocColumns,
+        defaultTocFormat,
         pageNumberingStyle,
         defaultNumberVerses,
         defaultChorusIndicator,
@@ -307,6 +313,8 @@ export function SongbookViewPage() {
     if (key === 'headerFontSize') setDefaultHeaderFontSize(value);
     if (key === 'subheaderFontSize') setDefaultSubheaderFontSize(value);
     if (key === 'tocFontSize') setDefaultTocFontSize(value);
+    if (key === 'tocColumns') setDefaultTocColumns(value);
+    if (key === 'tocFormat') setDefaultTocFormat(value);
     if (key === 'pageNumberingStyle') setPageNumberingStyle(value);
     if (key === 'numberVerses') setDefaultNumberVerses(value);
     if (key === 'chorusIndicator') setDefaultChorusIndicator(value);
@@ -489,6 +497,30 @@ export function SongbookViewPage() {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2"><Columns className="w-4 h-4"/> TOC Columns</Label>
+                      <span className="text-sm text-muted-foreground">{defaultTocColumns}</span>
+                    </div>
+                    <Slider 
+                      value={[defaultTocColumns]} 
+                      min={1} max={3} step={1}
+                      onValueChange={(v) => updateGlobal('tocColumns', Array.isArray(v) ? v[0] : v)} 
+                    />
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="flex items-center gap-2">TOC Format</Label>
+                    <Select value={defaultTocFormat} onValueChange={(v) => updateGlobal('tocFormat', v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="title-author">Title - Author</SelectItem>
+                        <SelectItem value="title-only">Title Only</SelectItem>
+                        <SelectItem value="dotted">Dotted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <Label className="flex items-center gap-2"><Type className="w-4 h-4"/> Line Spacing</Label>
                       <span className="text-sm text-muted-foreground">{defaultLineSpacing.toFixed(1)}x</span>
                     </div>
@@ -580,16 +612,34 @@ export function SongbookViewPage() {
           <div 
             id="measure-toc" 
             className="w-[180mm]"
-            style={{ height: '257mm', columnCount: 2, columnGap: '8mm', columnFill: 'auto' }}
+            style={{ height: '257mm', columnCount: defaultTocColumns, columnGap: '8mm', columnFill: 'auto' }}
           >
             <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2, columnSpan: 'all', WebkitColumnSpan: 'all' }}>Table of Contents</h2>
             <ul className="space-y-3" style={{ fontSize: `${defaultTocFontSize}px` }}>
-              {songs.map((song, i) => (
-                <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
-                  <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
-                  <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
-                </li>
-              ))}
+              {songs.map((song, i) => {
+                if (defaultTocFormat === 'title-only') {
+                  return (
+                    <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
+                      <span className="font-medium pr-4">{song.title}</span>
+                      <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                    </li>
+                  );
+                } else if (defaultTocFormat === 'dotted') {
+                  return (
+                    <li key={song.id} className="flex items-baseline break-inside-avoid mb-2 w-full">
+                      <span className="font-medium">{song.title} <span className="text-muted-foreground font-normal text-[0.85em] ml-2">{song.author}</span></span>
+                      <span className="flex-grow border-b-[2px] border-dotted border-muted-foreground mx-2 relative top-[-4px]"></span>
+                      <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                    </li>
+                  );
+                }
+                return (
+                  <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
+                    <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
+                    <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -653,7 +703,7 @@ export function SongbookViewPage() {
 
         {/* Table of Contents */}
         <PaginatedContent
-          columns={2}
+          columns={defaultTocColumns}
           pageCount={pageCounts['toc'] || 1}
           startPage={tocPage}
           getPageNumberAlignment={getPageNumberAlignment}
@@ -661,12 +711,30 @@ export function SongbookViewPage() {
             <>
               <h2 className="font-bold mb-8" style={{ fontSize: `${defaultHeaderFontSize}px`, lineHeight: 1.2, columnSpan: 'all', WebkitColumnSpan: 'all' }}>Table of Contents</h2>
               <ul className="space-y-3" style={{ fontSize: `${defaultTocFontSize}px` }}>
-                {songs.map((song, i) => (
-                  <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
-                    <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
-                    <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
-                  </li>
-                ))}
+                {songs.map((song, i) => {
+                  if (defaultTocFormat === 'title-only') {
+                    return (
+                      <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
+                        <span className="font-medium pr-4">{song.title}</span>
+                        <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                      </li>
+                    );
+                  } else if (defaultTocFormat === 'dotted') {
+                    return (
+                      <li key={song.id} className="flex items-baseline break-inside-avoid w-full">
+                        <span className="font-medium whitespace-nowrap">{song.title} {song.author ? <span className="text-muted-foreground font-normal text-[0.85em] ml-1">{song.author}</span> : null}</span>
+                        <span className="flex-grow border-b-[3px] border-dotted mx-3 relative top-[-6px] mix-blend-multiply opacity-30 print:opacity-40 border-black dark:border-white w-2"></span>
+                        <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={song.id} className="flex justify-between border-b border-dashed border-border pb-2 break-inside-avoid">
+                      <span className="font-medium pr-4">{song.title} <span className="text-muted-foreground font-normal text-sm ml-2">{song.author}</span></span>
+                      <span className="font-bold">{pageStarts[song.id] || i + 3}</span>
+                    </li>
+                  );
+                })}
               </ul>
             </>
           }
