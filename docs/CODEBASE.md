@@ -60,3 +60,5 @@ This document provides a technical overview of the system architecture, file str
 - Integrates Firestore via standard `@firebase/firestore` functions.
 - Every API call must be guarded by a `handleFirestoreError` wrap block to log error definitions in adherence to strict structural principles setup in `firestore.rules`.
 - Database schema changes require synchronous updates to both the rules file and `firebase-blueprint.json` to prevent divergence.
+- **Rules Customization:** Rules enforce strict group-based authorization gates where members of a shared group represent "full access" users (incorporating read, write/update, and deletion privileges on shared documents).
+- **Asynchronous Context Binding:** Crucial dependency hooks ensure `user` auth states bind reliably into page queries, eliminating authorization race conditions during initial mounting routines.

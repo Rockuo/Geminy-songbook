@@ -51,7 +51,10 @@
         "updatedAt": { "type": "number" },
         "isPublic": { "type": "boolean" },
         "defaultNumberVerses": { "type": "boolean" },
-        "defaultChorusIndicator": { "type": "string" }
+        "defaultChorusIndicator": { "type": "string" },
+        "defaultLineSpacing": { "type": "number" },
+        "defaultTocColumns": { "type": "number" },
+        "defaultTocFormat": { "type": "string" }
       },
       "required": ["title", "ownerId", "songs", "createdAt", "updatedAt", "isPublic"]
     }

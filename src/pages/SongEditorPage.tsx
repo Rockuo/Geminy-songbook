@@ -157,7 +157,7 @@ export function SongEditorPage() {
       setLoading(false);
     };
     loadData();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

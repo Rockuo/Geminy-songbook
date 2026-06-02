@@ -236,7 +236,7 @@ export function SongbookViewPage() {
       setLoading(false);
     };
     loadData();
-  }, [id]);
+  }, [id, user]);
 
   const handlePrint = () => {
     if (window !== window.parent) {

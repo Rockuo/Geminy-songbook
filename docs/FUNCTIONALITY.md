@@ -31,6 +31,8 @@ Songbook Editor is a web application designed to help musicians, bands, and wors
 - A specific view exists for compiling songs into a ready-to-print format.
 - **Styles:** Uses strictly enforced CSS `@media print` rules, rendering songs smoothly on standard A4 paper.
 - **Columns:** Renders text in CSS columns for space efficiency across multiple pages.
+- **Table of Contents Formatting:** Supports customizing the Table of Contents with options for font size, page column counts (1-3 Columns), and layout formats (dotted line leader patterns, title-author pairs, or title-only listings).
+- **Line Spacing Customization:** Provides fine-grained line spacing controls globally for the entire songbook as well as per-song overrides (0.5x to 2.0x spacing).
 
 ### 5. Web Page Import (Drag-and-Drop)
 - Rather than manually typing in an entire song, users can import songs directly from supported chord databases.
@@ -40,6 +42,9 @@ Songbook Editor is a web application designed to help musicians, bands, and wors
   3. The system auto-detects the source, parses the HTML, extracts the chords, and merges them into the standard ChordPro format.
 - Parses and restructures verses, choruses, and instrumental segments accurately into the preview frame automatically.
 
-### 6. Authentication and Cloud Storage
+### 6. Authentication and Group Access Control
 - Backed by Firebase Authentication for user accounts.
 - Stores user data, song catalogs, and configurations securely in Cloud Firestore with role-based strict schema security rule validations.
+- **Robust Sync:** Implements automated, non-destructive user account profile synchronization upon login, preserving administrative statuses and group access lists.
+- **Group Access Control ("Full Access"):** If a user is in the same group as a song or songbook, they are granted full edit, update, save layout, and deletion privileges to allow group collaboration.
+- **Asynchronous Authorization:** Core user authorization details dynamically re-resolve on the page when the Firebase Auth states compile asynchronously, preventing false-rejections on load.

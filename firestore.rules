@@ -201,7 +201,7 @@ service cloud.firestore {
       allow create: if isAllowedUser() && isValidSong(request.resource.data) && request.resource.data.ownerId == request.auth.uid;
       allow update: if isAllowedUser() && (isDocOwner() || hasSharedGroup(resource.data) || isAdmin()) && isValidSong(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
-      allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
+      allow delete: if isAllowedUser() && (isDocOwner() || hasSharedGroup(resource.data) || isAdmin());
     }
     
     match /songbooks/{songbookId} {
@@ -210,7 +210,7 @@ service cloud.firestore {
       allow create: if isAllowedUser() && isValidSongbook(request.resource.data) && request.resource.data.ownerId == request.auth.uid;
       allow update: if isAllowedUser() && (isDocOwner() || hasSharedGroup(resource.data) || isAdmin()) && isValidSongbook(request.resource.data) && 
                     areImmutableFieldsUnchanged(['ownerId', 'createdAt']);
-      allow delete: if isAllowedUser() && (isDocOwner() || isAdmin());
+      allow delete: if isAllowedUser() && (isDocOwner() || hasSharedGroup(resource.data) || isAdmin());
     }
   }
 }

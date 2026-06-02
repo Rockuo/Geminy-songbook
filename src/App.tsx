@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { Auth } from './components/Auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect } from 'react';
 import { Music } from 'lucide-react';
 
@@ -17,14 +17,32 @@ export default function App() {
   const [user] = useAuthState(auth);
 
   useEffect(() => {
-    if (user) {
-      setDoc(doc(db, 'users', user.uid), {
-        email: user.email,
-        name: user.displayName || 'Unknown',
-        photoUrl: user.photoURL || '',
-        role: 'user'
-      }, { merge: true }).catch(console.error);
-    }
+    const syncUserProfile = async () => {
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        try {
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              email: user.email,
+              name: user.displayName || 'Unknown',
+              photoUrl: user.photoURL || '',
+              role: user.email === 'xbures29@gmail.com' ? 'admin' : 'user',
+              groupIds: []
+            });
+          } else {
+            await setDoc(userRef, {
+              email: user.email,
+              name: user.displayName || 'Unknown',
+              photoUrl: user.photoURL || ''
+            }, { merge: true });
+          }
+        } catch (e) {
+          console.error("Error syncing user profile", e);
+        }
+      }
+    };
+    syncUserProfile();
   }, [user]);
 
   return (
